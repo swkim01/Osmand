@@ -23,6 +23,7 @@ import net.osmand.data.Amenity;
 import net.osmand.data.Amenity.AmenityRoutePoint;
 import net.osmand.data.AmenityType;
 import net.osmand.data.LatLon;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.Algorithms;
 import net.osmand.util.MapUtils;
 import net.sf.junidecode.Junidecode;
@@ -566,8 +567,8 @@ public class BinaryMapPoiReaderAdapter {
 				codedIS.popLimit(oldLim);
 				if (am != null) {
 					if (toSkip != null) {
-						int xp = (int) MapUtils.getTileNumberX(zSkip, am.getLocation().getLongitude());
-						int yp = (int) MapUtils.getTileNumberY(zSkip, am.getLocation().getLatitude());
+						int xp = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(zSkip, am.getLocation().getLongitude(), am.getLocation().getLatitude());
+						int yp = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(zSkip, am.getLocation().getLongitude(), am.getLocation().getLatitude());
 						long val = (((long) xp) << zSkip) | yp;
 						if (!toSkip.contains(val)) {
 							boolean publish = req.publish(am);

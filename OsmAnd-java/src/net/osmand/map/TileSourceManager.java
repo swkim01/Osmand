@@ -5,6 +5,7 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,6 +21,13 @@ import java.util.Map;
 
 import net.osmand.PlatformUtil;
 import net.osmand.util.Algorithms;
+import net.osmand.util.Bd02MapUtils;
+import net.osmand.util.DaumMapUtils;
+import net.osmand.util.ForestOnMapUtils;
+import net.osmand.util.Gcj09MapUtils;
+import net.osmand.util.MapUtils;
+import net.osmand.util.NaverMapUtils;
+import net.osmand.util.YahooMapUtils;
 
 import org.apache.commons.logging.Log;
 import org.xmlpull.v1.XmlPullParser;
@@ -33,6 +41,15 @@ public class TileSourceManager {
 	private static final String RULE_BEANSHELL = "beanshell";
 	public static final String RULE_YANDEX_TRAFFIC = "yandex_traffic";
 	private static final String RULE_WMS = "wms_tile";
+
+	private static final String RULE_YAHOO = "yahoo";
+	private static final String RULE_DAUM = "daum";
+	private static final String RULE_NAVER = "naver";
+	private static final String RULE_FORESTON = "foreston";
+	private static final String RULE_GCJ09 = "gcj09";
+        private static final String RULE_BAIDU = "baidu";
+
+	public static MapUtils[] mapUtilsList = {new MapUtils(), new YahooMapUtils(), new DaumMapUtils(), new NaverMapUtils(), new ForestOnMapUtils(), new Gcj09MapUtils(), new Bd02MapUtils()};
 
 	public static class TileSourceTemplate implements ITileSource, Cloneable {
 		private int maxZoom;
@@ -49,7 +66,10 @@ public class TileSourceManager {
 		private String rule;
 		
 		private boolean isRuleAcceptable = true;
-
+		
+		private MapUtils mapUtil = mapUtilsList[0];
+                private int vIndexOrder = 1;
+		
 		public TileSourceTemplate(String name, String urlToLoad, String ext, int maxZoom, int minZoom, int tileSize, int bitDensity,
 				int avgSize) {
 			this.maxZoom = maxZoom;
@@ -216,6 +236,15 @@ public class TileSourceManager {
 
 		public String getRule() {
 			return rule;
+		}
+
+		public void setMapUtil(int index) {
+			this.mapUtil = mapUtilsList[index];
+		}
+		
+		@Override
+		public MapUtils getMapUtils() {
+			return mapUtil;
 		}
 		
 		public String calculateTileId(int x, int y, int zoom) {
@@ -399,11 +428,31 @@ public class TileSourceManager {
 
 
 	public static List<TileSourceTemplate> downloadTileSourceTemplates(String versionAsUrl) {
-		final List<TileSourceTemplate> templates = new ArrayList<TileSourceTemplate>();
 		try {
 			URLConnection connection = new URL("http://download.osmand.net//tile_sources.php?" + versionAsUrl).openConnection();
+			return createTileSourceTemplates(connection.getInputStream());
+		} catch (IOException e) {
+			log.error("Exception while downloading tile sources", e);
+			return null;
+		}
+	}
+	
+	public static List<TileSourceTemplate> getLocalTileSourceTemplates(File tilesDir) {
+		try {
+			File customTiles = new File(tilesDir, "custom_tile_sources.xml");
+return createTileSourceTemplates(new FileInputStream(customTiles));
+		} catch (FileNotFoundException e) {
+			log.info("Geting local tile sources: No custom file specified (" + tilesDir.getAbsolutePath() + File.separator + "custom_tile_sources.xml" + ")");
+			return null;
+		}
+	}
+	
+	private static List<TileSourceTemplate> createTileSourceTemplates(InputStream inputStream) {
+
+		final List<TileSourceTemplate> templates = new ArrayList<TileSourceTemplate>();
+		try {
 			XmlPullParser parser = PlatformUtil.newXMLPullParser();
-			parser.setInput(connection.getInputStream(), "UTF-8");
+			parser.setInput(inputStream, "UTF-8");
 			int tok;
 			while ((tok = parser.next()) != XmlPullParser.END_DOCUMENT) {
 				if (tok == XmlPullParser.START_TAG) {
@@ -441,6 +490,18 @@ public class TileSourceManager {
 			template = createWmsTileSourceTemplate(attrs);
 		} else if (RULE_YANDEX_TRAFFIC.equalsIgnoreCase(rule)) {
 			template = createSimpleTileSourceTemplate(attrs, true);
+		} else if (RULE_DAUM.equalsIgnoreCase(rule)) {
+			template = createDaumTileSourceTemplate(attrs, true);
+		} else if (RULE_NAVER.equalsIgnoreCase(rule)) {
+			template = createNaverTileSourceTemplate(attrs, true);
+		} else if (RULE_FORESTON.equalsIgnoreCase(rule)) {
+			template = createForestOnTileSourceTemplate(attrs, true);
+		} else if (RULE_YAHOO.equalsIgnoreCase(rule)) {
+			template = createYahooTileSourceTemplate(attrs, true);
+		} else if (RULE_GCJ09.equalsIgnoreCase(rule)) {
+			template = createGcj09TileSourceTemplate(attrs, true);
+		} else if (RULE_BAIDU.equalsIgnoreCase(rule)) {
+			template = createBaiduTileSourceTemplate(attrs, true);
 		} else {
 			return null;
 		}
@@ -568,6 +629,244 @@ public class TileSourceManager {
 		}
 		
 	}
+	
+	private static TileSourceTemplate createYahooTileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+		String name = attributes.get("name");
+		String urlTemplate = attributes.get("url_template");
+		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
+			return null;
+		}
+		if(urlTemplate != null){
+			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		}
+		int maxZoom = parseInt(attributes, "max_zoom", 18);
+		int minZoom = parseInt(attributes, "min_zoom", 5);
+		int tileSize = parseInt(attributes, "tile_size", 256);
+		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
+		int bitDensity = parseInt(attributes, "img_density", 16);
+		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
+		TileSourceTemplate templ = new YahooTileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		templ.setMapUtil(1);
+		return templ;
+	}
 
+	public static class YahooTileSourceTemplate extends TileSourceTemplate {
+		
+		public YahooTileSourceTemplate(String name, String urlToLoad, String ext,
+				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
+		}
+		
+		@Override
+		public String getUrlToLoad(int x, int y, int zoom) {
+			if(urlToLoad == null){
+				return null;
+			}
+			return MessageFormat.format(urlToLoad, zoom+1+"", x+"", y+""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		}
+	}
+	
+	private static TileSourceTemplate createDaumTileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+		String name = attributes.get("name");
+		String urlTemplate = attributes.get("url_template");
+		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
+			return null;
+		}
+		if(urlTemplate != null){
+			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		}
+		int maxZoom = parseInt(attributes, "max_zoom", 18);
+		int minZoom = parseInt(attributes, "min_zoom", 5);
+		int tileSize = parseInt(attributes, "tile_size", 256);
+		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
+		int bitDensity = parseInt(attributes, "img_density", 16);
+		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
+		TileSourceTemplate templ = new DaumTileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		templ.setMapUtil(2);
+		return templ;
+	}
+
+	public static class DaumTileSourceTemplate extends TileSourceTemplate {
+		
+		public DaumTileSourceTemplate(String name, String urlToLoad, String ext,
+				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
+		}
+		
+		@Override
+		public String getUrlToLoad(int x, int y, int zoom) {
+			if(urlToLoad == null){
+				return null;
+			}
+			
+			if (zoom < 6) {
+				return null;
+			} else {	
+				return MessageFormat.format(urlToLoad, 20-zoom+"", x+"", y+""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			}
+		}
+	}
+	
+	private static TileSourceTemplate createNaverTileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+		String name = attributes.get("name");
+		String urlTemplate = attributes.get("url_template");
+		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
+			return null;
+		}
+		if(urlTemplate != null){
+			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		}
+		int maxZoom = parseInt(attributes, "max_zoom", 18);
+		int minZoom = parseInt(attributes, "min_zoom", 5);
+		int tileSize = parseInt(attributes, "tile_size", 256);
+		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
+		int bitDensity = parseInt(attributes, "img_density", 16);
+		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
+		TileSourceTemplate templ = new NaverTileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		templ.setMapUtil(3);
+		return templ;
+	}
+
+	public static class NaverTileSourceTemplate extends TileSourceTemplate {
+		
+		public NaverTileSourceTemplate(String name, String urlToLoad, String ext,
+				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
+		}
+		
+		@Override
+		public String getUrlToLoad(int x, int y, int zoom) {
+			if(urlToLoad == null){
+				return null;
+			}
+			
+			if (zoom < 6) {
+				return null;
+			} else {
+				return MessageFormat.format(urlToLoad, zoom-5+"", x+"", y+""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			}
+		}
+	}
+	
+	private static TileSourceTemplate createForestOnTileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+		String name = attributes.get("name");
+		String urlTemplate = attributes.get("url_template");
+		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
+			return null;
+		}
+		if(urlTemplate != null){
+			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		}
+		int maxZoom = parseInt(attributes, "max_zoom", 18);
+		int minZoom = parseInt(attributes, "min_zoom", 5);
+		int tileSize = parseInt(attributes, "tile_size", 256);
+		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
+		int bitDensity = parseInt(attributes, "img_density", 16);
+		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
+		TileSourceTemplate templ = new ForestOnTileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		templ.setMapUtil(4);
+		return templ;
+	}
+
+	public static class ForestOnTileSourceTemplate extends TileSourceTemplate {
+		
+		public ForestOnTileSourceTemplate(String name, String urlToLoad, String ext,
+				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
+		}
+		
+		@Override
+		public String getUrlToLoad(int x, int y, int zoom) {
+			if(urlToLoad == null){
+				return null;
+			}
+			
+			if (zoom < 6) {
+				return null;
+			} else {
+				if (this.getName().contains("Track")) {
+					int s = 1<<(25-zoom);
+
+					return MessageFormat.format(urlToLoad, s+"", x+"", y+""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				}
+				else {
+					int b = 20-zoom;
+					String c="00000";
+
+					return urlToLoad
+							+c.substring(0,2-Integer.toString(b).length())+b+"/"
+							+c.substring(0,5-Integer.toString(y).length())+y+"/"
+							+"KR_"
+							+c.substring(0,2-Integer.toString(b).length())+b+"_"
+							+c.substring(0,5-Integer.toString(x).length())+x+"_"
+							+c.substring(0,5-Integer.toString(y).length())+y+ext;	
+				}
+			}
+		}
+	}
+	
+	private static TileSourceTemplate createGcj09TileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+		String name = attributes.get("name");
+		String urlTemplate = attributes.get("url_template");
+		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
+			return null;
+		}
+		if(urlTemplate != null){
+			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		}
+		int maxZoom = parseInt(attributes, "max_zoom", 18);
+		int minZoom = parseInt(attributes, "min_zoom", 5);
+		int tileSize = parseInt(attributes, "tile_size", 256);
+		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
+		int bitDensity = parseInt(attributes, "img_density", 16);
+		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
+		TileSourceTemplate templ = new Gcj09TileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		templ.setMapUtil(5);
+		return templ;
+	}
+
+	public static class Gcj09TileSourceTemplate extends TileSourceTemplate {
+		
+		public Gcj09TileSourceTemplate(String name, String urlToLoad, String ext,
+				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
+		}
+	}
+	
+	private static TileSourceTemplate createBaiduTileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+		String name = attributes.get("name");
+		String urlTemplate = attributes.get("url_template");
+		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
+			return null;
+		}
+		if(urlTemplate != null){
+			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		}
+		int maxZoom = parseInt(attributes, "max_zoom", 18);
+		int minZoom = parseInt(attributes, "min_zoom", 5);
+		int tileSize = parseInt(attributes, "tile_size", 256);
+		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
+		int bitDensity = parseInt(attributes, "img_density", 16);
+		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
+		TileSourceTemplate templ = new BaiduTileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		templ.setMapUtil(6);
+		return templ;
+	}
+	
+	public static class BaiduTileSourceTemplate extends TileSourceTemplate {
+		
+		public BaiduTileSourceTemplate(String name, String urlToLoad, String ext,
+				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
+		}
+		
+		@Override
+		public String getUrlToLoad(int x, int y, int zoom) {
+			if(urlToLoad == null){
+				return null;
+			}
+			return MessageFormat.format(urlToLoad, zoom+1+"", x+"", y+""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		}
+	}
 	
 }

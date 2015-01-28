@@ -12,10 +12,12 @@ import net.osmand.IndexConstants;
 import net.osmand.PlatformUtil;
 import net.osmand.data.QuadRect;
 import net.osmand.map.ITileSource;
+import net.osmand.map.TileSourceManager;
 import net.osmand.map.TileSourceManager.TileSourceTemplate;
 import net.osmand.plus.api.SQLiteAPI.SQLiteConnection;
 import net.osmand.plus.api.SQLiteAPI.SQLiteCursor;
 import net.osmand.util.Algorithms;
+import net.osmand.util.MapUtils;
 
 import org.apache.commons.logging.Log;
 
@@ -434,6 +436,11 @@ public class SQLiteTileSource implements ITileSource {
 	
 	public int getExpirationTimeMillis() {
 		return expirationTimeMillis;
+	}
+
+	@Override
+        public MapUtils getMapUtils() {
+		return base != null ? base.getMapUtils() : TileSourceManager.mapUtilsList[0];
 	}
 	
 

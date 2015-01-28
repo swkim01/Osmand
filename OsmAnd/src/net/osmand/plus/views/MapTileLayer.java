@@ -29,6 +29,7 @@ public class MapTileLayer extends BaseMapLayer {
 	
 	private final boolean mainMap;
 	protected ITileSource map = null;
+	public MapUtils mapUtils = null;
 	protected MapTileAdapter mapTileAdapter = null;
 	
 	Paint paintBitmap;
@@ -91,6 +92,10 @@ public class MapTileLayer extends BaseMapLayer {
 	public void setMapForMapTileAdapter(ITileSource map, MapTileAdapter mapTileAdapter) {
 		if(mapTileAdapter == this.mapTileAdapter){
 			this.map = map;
+			if (map != null)
+				this.mapUtils = map.getMapUtils();
+			else
+				this.mapUtils = TileSourceManager.mapUtilsList[0];
 		}
 	}
 	
@@ -104,6 +109,10 @@ public class MapTileLayer extends BaseMapLayer {
 			
 		}
 		this.map = map;
+		if (map != null)
+			this.mapUtils = map.getMapUtils();
+		else
+			this.mapUtils = TileSourceManager.mapUtilsList[0];
 		setMapTileAdapter(target);
 	}
 	
@@ -121,7 +130,10 @@ public class MapTileLayer extends BaseMapLayer {
 		if(mapTileAdapter != null){
 			mapTileAdapter.onDraw(canvas, tileBox, drawSettings);
 		}
-		drawTileMap(canvas, tileBox);
+		//drawTileMap(canvas, tileBox);
+		RotatedTileBox newTileBox = tileBox.copy();
+		newTileBox.setMapUtils(this.mapUtils);
+		drawTileMap(canvas, newTileBox);
 	}
 
 	@Override
@@ -141,14 +153,21 @@ public class MapTileLayer extends BaseMapLayer {
 		// recalculate for ellipsoid coordinates
 		float ellipticTileCorrection  = 0;
 		if (map.isEllipticYTile()) {
-			ellipticTileCorrection = (float) (MapUtils.getTileEllipsoidNumberY(nzoom, tileBox.getLatitude()) - tileBox.getCenterTileY());
+			//ellipticTileCorrection = (float) (MapUtils.getTileEllipsoidNumberY(nzoom, tileBox.getLatitude()) - tileBox.getCenterTileY());
+			ellipticTileCorrection = (float) (MapUtils.getTileEllipsoidNumberY(nzoom, tileBox.getLatitude()) - TileSourceManager.mapUtilsList[0].getTileNumberY(nzoom, tileBox.getLongitude(), tileBox.getLatitude()));
 		}
 
-
 		int left = (int) Math.floor(tilesRect.left);
-		int top = (int) Math.floor(tilesRect.top + ellipticTileCorrection);
 		int width = (int) Math.ceil(tilesRect.right - left);
-		int height = (int) Math.ceil(tilesRect.bottom + ellipticTileCorrection - top);
+		int top;
+		int height;
+		if (mapUtils.getVIndexOrder() > 0) {
+			top = (int) Math.floor(tilesRect.top + ellipticTileCorrection);
+			height = (int) Math.ceil(tilesRect.bottom + ellipticTileCorrection - top);
+		} else {
+			top = (int) Math.floor(tilesRect.bottom - ellipticTileCorrection);
+			height = (int) Math.ceil(tilesRect.top - ellipticTileCorrection - top);
+		}
 
 		boolean useInternet = OsmandPlugin.getEnabledPlugin(OsmandRasterMapsPlugin.class) != null && 
 				settings.USE_INTERNET_TO_DOWNLOAD_TILES.get() && settings.isInternetConnectionAvailable() && map.couldBeDownloadedFromInternet();
@@ -166,7 +185,6 @@ public class MapTileLayer extends BaseMapLayer {
 
 				int y1 = tileBox.getPixYFromTileYNoRot(topPlusJ -  ellipticTileCorrection);
 				int y2 = tileBox.getPixYFromTileYNoRot(topPlusJ + 1 -  ellipticTileCorrection);
-				bitmapToDraw.set(x1, y1, x2 , y2);
 				
 				final int tileX = leftPlusI;
 				final int tileY = topPlusJ;
@@ -209,10 +227,19 @@ public class MapTileLayer extends BaseMapLayer {
 						// nice scale
 						boolean useSampling = kzoom > 4;
 						int margin = useSampling ? 1 : 0;
-						bitmapToZoom.set(Math.max(xZoom - margin, 0), 
+						if (mapUtils.getVIndexOrder() > 0) {
+							bitmapToZoom.set(Math.max(xZoom - margin, 0), 
 								Math.max(yZoom - margin , 0), 
 								Math.min(margin + xZoom + tileSize / div, tileSize), 
 								Math.min(margin + yZoom + tileSize / div, tileSize));
+							bitmapToDraw.set(x1, y1, x2, y2);
+						} else {
+							bitmapToZoom.set(Math.max(xZoom - margin, 0), 
+								Math.max(tileSize - tileSize / div - yZoom - margin , 0), 
+								Math.min(margin + xZoom + tileSize / div, tileSize), 
+								Math.min(margin - yZoom + tileSize, tileSize));
+							bitmapToDraw.set(x1, y2, x2, y1);
+						}
 						if(!useSampling) {
 							canvas.drawBitmap(bmp, bitmapToZoom, bitmapToDraw, paintBitmap);
 						} else {
@@ -220,8 +247,8 @@ public class MapTileLayer extends BaseMapLayer {
 							RectF src = new RectF(0.5f, 0.5f,
 									scaledSize + 2 * margin - 0.5f, scaledSize + 2 * margin - 0.5f);
 							RectF dest = new RectF(0, 0, tileSize, tileSize);
-			                Matrix m = new Matrix();
-			                m.setRectToRect(src, dest, Matrix.ScaleToFit.FILL);
+							Matrix m = new Matrix();
+							m.setRectToRect(src, dest, Matrix.ScaleToFit.FILL);
 							Bitmap sampled = Bitmap.createBitmap(bmp, bitmapToZoom.left, bitmapToZoom.top, 
 									scaledSize + 2 * margin - 1, scaledSize + 2 * margin - 1, m, true);
 							bitmapToZoom.set(0, 0, tileSize, tileSize);
@@ -232,6 +259,11 @@ public class MapTileLayer extends BaseMapLayer {
 					}
 				} else {
 					bitmapToZoom.set(0, 0, tileSize, tileSize);
+					if (mapUtils.getVIndexOrder() > 0) {
+						bitmapToDraw.set(x1, y1, x2, y2);
+					} else {
+						bitmapToDraw.set(x1, y2, x2, y1);
+					}
 					canvas.drawBitmap(bmp, bitmapToZoom, bitmapToDraw, paintBitmap);
 				}
 				if(bmp != null) {

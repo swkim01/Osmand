@@ -18,6 +18,7 @@ import net.osmand.data.RotatedTileBox;
 import net.osmand.map.IMapLocationListener;
 import net.osmand.map.MapTileDownloader.DownloadRequest;
 import net.osmand.map.MapTileDownloader.IMapDownloaderCallback;
+import net.osmand.map.TileSourceManager;
 import net.osmand.plus.OsmAndConstants;
 import net.osmand.plus.OsmAndFormatter;
 import net.osmand.plus.OsmandApplication;
@@ -128,6 +129,8 @@ public class OsmandMapTileView implements IMapDownloaderCallback {
 	private BaseMapLayer mainLayer;
 
 	private Map<OsmandMapLayer, Float> zOrders = new HashMap<OsmandMapLayer, Float>();
+
+	public MapUtils mapUtils = null;
 
 	// UI Part
 	// handler to refresh map (in ui thread - ui thread is not necessary, but msg queue is required).
@@ -382,6 +385,11 @@ public class OsmandMapTileView implements IMapDownloaderCallback {
 
 	public void setMainLayer(BaseMapLayer mainLayer) {
 		this.mainLayer = mainLayer;
+		if(mainLayer instanceof MapTileLayer && ((MapTileLayer) mainLayer).map != null)
+                        this.mapUtils = ((MapTileLayer) mainLayer).map.getMapUtils();
+                else
+                        this.mapUtils = TileSourceManager.mapUtilsList[0];
+
 		int zoom = currentViewport.getZoom();
 		if (mainLayer.getMaximumShownMapZoom() < zoom) {
 			zoom = mainLayer.getMaximumShownMapZoom();
@@ -390,6 +398,7 @@ public class OsmandMapTileView implements IMapDownloaderCallback {
 			zoom = mainLayer.getMinimumShownMapZoom();
 		}
 		currentViewport.setZoomAndAnimation(zoom, 0, 0);
+		currentViewport.setMapUtils(mapUtils);
 		refreshMap();
 	}
 

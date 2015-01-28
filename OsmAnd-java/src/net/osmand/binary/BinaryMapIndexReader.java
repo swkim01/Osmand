@@ -61,6 +61,7 @@ import net.osmand.data.Street;
 import net.osmand.data.TransportRoute;
 import net.osmand.data.TransportStop;
 import net.osmand.osm.edit.Way;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.Algorithms;
 import net.osmand.util.MapUtils;
 
@@ -463,8 +464,8 @@ public class BinaryMapIndexReader {
 	}
 	
 	public boolean containTransportData(double latitude, double longitude) {
-		double x = MapUtils.getTileNumberX(TRANSPORT_STOP_ZOOM, longitude);
-		double y = MapUtils.getTileNumberY(TRANSPORT_STOP_ZOOM, latitude);
+		double x = TileSourceManager.mapUtilsList[0].getTileNumberX(TRANSPORT_STOP_ZOOM, longitude, latitude);
+		double y = TileSourceManager.mapUtilsList[0].getTileNumberY(TRANSPORT_STOP_ZOOM, longitude, latitude);
 		for (TransportIndex index : transportIndexes) {
 			if (index.right >= x &&  index.left <= x && index.top <= y && index.bottom >= y) {
 				return true;
@@ -474,10 +475,10 @@ public class BinaryMapIndexReader {
 	}
 	
 	public boolean containTransportData(double topLatitude, double leftLongitude, double bottomLatitude, double rightLongitude){
-		double leftX = MapUtils.getTileNumberX(TRANSPORT_STOP_ZOOM, leftLongitude);
-		double topY = MapUtils.getTileNumberY(TRANSPORT_STOP_ZOOM, topLatitude);
-		double rightX = MapUtils.getTileNumberX(TRANSPORT_STOP_ZOOM, rightLongitude);
-		double bottomY = MapUtils.getTileNumberY(TRANSPORT_STOP_ZOOM, bottomLatitude);
+		double leftX = TileSourceManager.mapUtilsList[0].getTileNumberX(TRANSPORT_STOP_ZOOM, leftLongitude, topLatitude);
+		double topY = TileSourceManager.mapUtilsList[0].getTileNumberY(TRANSPORT_STOP_ZOOM, leftLongitude, topLatitude);
+		double rightX = TileSourceManager.mapUtilsList[0].getTileNumberX(TRANSPORT_STOP_ZOOM, rightLongitude, bottomLatitude);
+		double bottomY = TileSourceManager.mapUtilsList[0].getTileNumberY(TRANSPORT_STOP_ZOOM, rightLongitude, bottomLatitude);
 		for (TransportIndex index : transportIndexes) {
 			if (index.right >= leftX &&  index.left <= rightX && index.top <= bottomY && index.bottom >= topY) {
 				return true;
@@ -1378,10 +1379,10 @@ public class BinaryMapIndexReader {
 		for(int i = 1; i < route.size(); i++) {
 			Location cr = route.get(i);
 			Location pr = route.get(i - 1);
-			double tx = MapUtils.getTileNumberX(SearchRequest.ZOOM_TO_SEARCH_POI, cr.getLongitude());
-			double ty = MapUtils.getTileNumberY(SearchRequest.ZOOM_TO_SEARCH_POI, cr.getLatitude());
-			double px = MapUtils.getTileNumberX(SearchRequest.ZOOM_TO_SEARCH_POI, pr.getLongitude());
-			double py = MapUtils.getTileNumberY(SearchRequest.ZOOM_TO_SEARCH_POI, pr.getLatitude());
+			double tx = TileSourceManager.mapUtilsList[0].getTileNumberX(SearchRequest.ZOOM_TO_SEARCH_POI, cr.getLongitude(), cr.getLatitude());
+			double ty = TileSourceManager.mapUtilsList[0].getTileNumberY(SearchRequest.ZOOM_TO_SEARCH_POI, cr.getLongitude(), cr.getLatitude());
+			double px = TileSourceManager.mapUtilsList[0].getTileNumberX(SearchRequest.ZOOM_TO_SEARCH_POI, pr.getLongitude(), pr.getLatitude());
+			double py = TileSourceManager.mapUtilsList[0].getTileNumberY(SearchRequest.ZOOM_TO_SEARCH_POI, pr.getLongitude(), pr.getLatitude());
 			double topLeftX = Math.min(tx, px) - coeff;
 			double topLeftY = Math.min(ty, py) - coeff;
 			double bottomRightX = Math.max(tx, px) + coeff;
@@ -1550,8 +1551,8 @@ public class BinaryMapIndexReader {
 		}
 		
 		public int getTileHashOnPath(double lat, double lon) {
-			int x = (int) MapUtils.getTileNumberX(SearchRequest.ZOOM_TO_SEARCH_POI, lon);
-			int y = (int) MapUtils.getTileNumberY(SearchRequest.ZOOM_TO_SEARCH_POI, lat);
+			int x = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(SearchRequest.ZOOM_TO_SEARCH_POI, lon, lat);
+			int y = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(SearchRequest.ZOOM_TO_SEARCH_POI, lon, lat);
 			return (x << SearchRequest.ZOOM_TO_SEARCH_POI) | y;
 		}
 		

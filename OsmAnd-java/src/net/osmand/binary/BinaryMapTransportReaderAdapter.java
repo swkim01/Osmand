@@ -9,6 +9,7 @@ import java.util.List;
 
 import net.osmand.binary.BinaryMapIndexReader.SearchRequest;
 import net.osmand.data.TransportStop;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.MapUtils;
 import net.sf.junidecode.Junidecode;
 
@@ -280,8 +281,8 @@ public class BinaryMapTransportReaderAdapter {
 				TransportStop stop = readTransportRouteStop(dx, dy, did, stringTable);
 				dataObject.getBackwardStops().add(stop);
 				did = stop.getId();
-				dx = (int) MapUtils.getTileNumberX(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLongitude());
-				dy = (int) MapUtils.getTileNumberY(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLatitude());
+				dx = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLongitude(), stop.getLocation().getLatitude());
+				dy = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLongitude(), stop.getLocation().getLatitude());
 				codedIS.popLimit(olds);
 				break;
 			case OsmandOdb.TransportRoute.DIRECTSTOPS_FIELD_NUMBER:
@@ -295,8 +296,8 @@ public class BinaryMapTransportReaderAdapter {
 				stop = readTransportRouteStop(rx, ry, rid, stringTable);
 				dataObject.getForwardStops().add(stop);
 				rid = stop.getId();
-				rx = (int) MapUtils.getTileNumberX(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLongitude());
-				ry = (int) MapUtils.getTileNumberY(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLatitude());
+				rx = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLongitude(), stop.getLocation().getLatitude());
+				ry = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(BinaryMapIndexReader.TRANSPORT_STOP_ZOOM, stop.getLocation().getLongitude(), stop.getLocation().getLatitude());
 				codedIS.popLimit(olds);
 				break;
 			default:

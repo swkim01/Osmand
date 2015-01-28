@@ -19,6 +19,7 @@ import net.osmand.binary.BinaryMapIndexReader.SearchFilter;
 import net.osmand.binary.BinaryMapIndexReader.SearchRequest;
 import net.osmand.binary.BinaryMapIndexReader.TagValuePair;
 import net.osmand.render.RenderingRulesStorage;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.MapUtils;
 
 public class BinaryMapIndexFilter {
@@ -47,11 +48,11 @@ public class BinaryMapIndexFilter {
 	private double calculateArea(BinaryMapDataObject o, int zoom){
 		double sum = 0;
 		for(int i=0; i< o.getPointsLength(); i++){
-			double x = MapUtils.getTileNumberX(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i)));
+			double x = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i)), MapUtils.get31LatitudeY(o.getPoint31YTile(i)));
 			int prev = i == 0 ? o.getPointsLength() - 1 : i -1;
 			int next = i == o.getPointsLength() - 1 ? 0 : i + 1;
-			double y1 = MapUtils.getTileNumberY(zoom + 8, MapUtils.get31LatitudeY(o.getPoint31YTile(prev)));
-			double y2 = MapUtils.getTileNumberY(zoom + 8, MapUtils.get31LatitudeY(o.getPoint31YTile(next)));
+			double y1 = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(prev)), MapUtils.get31LatitudeY(o.getPoint31YTile(prev)));
+			double y2 = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(next)), MapUtils.get31LatitudeY(o.getPoint31YTile(next)));
 			sum += x * (y1 - y2);
 		}
 		return Math.abs(sum);
@@ -60,10 +61,10 @@ public class BinaryMapIndexFilter {
 	private double calculateLength(BinaryMapDataObject o, int zoom){
 		double sum = 0;
 		for(int i=1; i< o.getPointsLength(); i++){
-			double x = MapUtils.getTileNumberX(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i)));
-			double y = MapUtils.getTileNumberY(zoom + 8, MapUtils.get31LatitudeY(o.getPoint31YTile(i)));
-			double x2 = MapUtils.getTileNumberX(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i - 1)));
-			double y2 = MapUtils.getTileNumberY(zoom + 8, MapUtils.get31LatitudeY(o.getPoint31YTile(i - 1)));
+			double x = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i)), MapUtils.get31LatitudeY(o.getPoint31YTile(i)));
+			double y = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i)), MapUtils.get31LatitudeY(o.getPoint31YTile(i)));
+			double x2 = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i - 1)), MapUtils.get31LatitudeY(o.getPoint31YTile(i - 1)));
+			double y2 = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom + 8, MapUtils.get31LongitudeX(o.getPoint31XTile(i - 1)), MapUtils.get31LatitudeY(o.getPoint31YTile(i - 1)));
 			sum += Math.sqrt((x - x2) * (x - x2)  +  (y - y2) * (y - y2));
 		}
 		return Math.abs(sum);
@@ -72,8 +73,8 @@ public class BinaryMapIndexFilter {
 	private int tilesCovers(BinaryMapDataObject o, int zoom, TIntHashSet set){
 		set.clear();
 		for(int i=0; i< o.getPointsLength(); i++){
-			int x = (int) MapUtils.getTileNumberX(zoom, MapUtils.get31LongitudeX(o.getPoint31XTile(i)));
-			int y = (int) MapUtils.getTileNumberY(zoom, MapUtils.get31LatitudeY(o.getPoint31YTile(i)));
+			int x = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, MapUtils.get31LongitudeX(o.getPoint31XTile(i)), MapUtils.get31LatitudeY(o.getPoint31YTile(i)));
+			int y = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, MapUtils.get31LongitudeX(o.getPoint31XTile(i)), MapUtils.get31LatitudeY(o.getPoint31YTile(i)));
 			int val = ((x << 16) | y);
 			set.add(val);
 		}

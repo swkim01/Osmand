@@ -160,7 +160,7 @@ public class MapUtils {
 	 * degree longitude measurements (-180, 180) [27.56 Minsk]
 	// degree latitude measurements (90, -90) [53.9]
 	 */
-	
+	/*
 	public static double getTileNumberX(float zoom, double longitude){
 		longitude = checkLongitude(longitude);
 		final double powZoom = getPowZoom(zoom);
@@ -172,6 +172,26 @@ public class MapUtils {
 	}
 	
 	public static double getTileNumberY(float zoom,  double latitude){
+		latitude = checkLatitude(latitude);
+		double eval = Math.log( Math.tan(toRadians(latitude)) + 1/Math.cos(toRadians(latitude)) );
+		if (Double.isInfinite(eval) || Double.isNaN(eval)) {
+			latitude = latitude < 0 ? - 89.9 : 89.9;
+			eval = Math.log( Math.tan(toRadians(latitude)) + 1/Math.cos(toRadians(latitude)) );
+		}
+		return (1 - eval / Math.PI) / 2 * getPowZoom(zoom);
+	}
+	*/
+	public double getTileNumberX(float zoom, double longitude, double latitude){
+		longitude = checkLongitude(longitude);
+		final double powZoom = getPowZoom(zoom);
+		double dz = (longitude + 180d)/360d * powZoom;
+		if (dz >= powZoom) {
+			return powZoom - 0.01;
+		}
+		return dz;
+	}
+	
+	public double getTileNumberY(float zoom, double longitude,  double latitude){
 		latitude = checkLatitude(latitude);
 		double eval = Math.log( Math.tan(toRadians(latitude)) + 1/Math.cos(toRadians(latitude)) );
 		if (Double.isInfinite(eval) || Double.isNaN(eval)) {
@@ -230,6 +250,10 @@ public class MapUtils {
 		return x / getPowZoom(zoom) * 360.0 - 180.0;
 	}
 	
+	public double getLongitudeFromTile(float zoom, double x, double y) {
+		return x / getPowZoom(zoom) * 360.0 - 180.0;
+	}
+	
 	public static double getPowZoom(double zoom){
 		if(zoom >= 0 && zoom - Math.floor(zoom) < 0.001f){
 			return 1 << ((int)zoom); 
@@ -253,14 +277,19 @@ public class MapUtils {
 		return Math.atan(sign * Math.sinh(Math.PI * (1 - 2 * y / getPowZoom(zoom)))) * 180d / Math.PI;
 	}
 	
-	
-	public static int getPixelShiftX(float zoom, double long1, double long2, double tileSize){
-		return (int) ((getTileNumberX(zoom, long1) - getTileNumberX(zoom, long2)) * tileSize);
+	public double getLatitudeFromTile(float zoom, double x, double y) {
+		int sign = y < 0 ? -1 : 1;
+		return Math.atan(sign * Math.sinh(Math.PI * (1 - 2 * y / getPowZoom(zoom)))) * 180d / Math.PI;
 	}
 	
 	
-	public static int getPixelShiftY(float zoom, double lat1, double lat2, double tileSize){
-		return (int) ((getTileNumberY(zoom, lat1) - getTileNumberY(zoom, lat2)) * tileSize);
+	public /*static*/ int getPixelShiftX(float zoom, double long1, double long2, double tileSize){
+		return (int) ((getTileNumberX(zoom, long1, 0) - getTileNumberX(zoom, long2, 0)) * tileSize);
+	}
+	
+	
+	public /*static*/ int getPixelShiftY(float zoom, double lat1, double lat2, double tileSize){
+		return (int) ((getTileNumberY(zoom, 0, lat1) - getTileNumberY(zoom, 0, lat2)) * tileSize);
 	}
 	
 	
@@ -480,6 +509,15 @@ public class MapUtils {
 		return multiple;
 	}
 
+	/**
+	 * Get vertical index order of the map
+	 * in case of increasing index from arctic to equator like wgs84 osm map, return 1,
+	 * or otherwise return -1
+	 * @return
+	 */
+	public int getVIndexOrder() {
+		return 1;
+        }
 
 }
 

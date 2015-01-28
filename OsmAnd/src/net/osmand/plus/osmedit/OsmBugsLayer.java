@@ -132,8 +132,8 @@ public class OsmBugsLayer extends OsmandMapLayer implements IContextMenuProvider
 			List<OpenStreetNote> objects = data.getResults();
 			if (objects != null) {
 				for (OpenStreetNote o : objects) {
-					int x = tileBox.getPixXFromLonNoRot(o.getLongitude());
-					int y = tileBox.getPixYFromLatNoRot(o.getLatitude());
+					int x = tileBox.getPixXFromLonNoRot(o.getLongitude(), o.getLatitude());
+					int y = tileBox.getPixYFromLatNoRot(o.getLongitude(), o.getLatitude());
 					canvas.drawCircle(x, y, getRadiusBug(tileBox), o.isLocal() ? pointNotSubmitedUI
 							: (o.isOpened() ? pointOpenedUI : pointClosedUI));
 				}

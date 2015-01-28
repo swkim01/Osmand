@@ -149,8 +149,8 @@ public class TransportStopsLayer extends OsmandMapLayer implements ContextMenuLa
 					latLonBounds.bottom, latLonBounds.right, tb.getZoom(), objects);
 			int r = 3 * getRadiusPoi(tb) / 4;
 			for (TransportStop o : objects) {
-				int x = tb.getPixXFromLonNoRot(o.getLocation().getLongitude());
-				int y = tb.getPixYFromLatNoRot(o.getLocation().getLatitude());
+				int x = tb.getPixXFromLonNoRot(o.getLocation().getLongitude(), o.getLocation().getLatitude());
+				int y = tb.getPixYFromLatNoRot(o.getLocation().getLongitude(), o.getLocation().getLatitude());
 				canvas.drawRect(x - r, y - r, x + r, y + r, pointAltUI);
 			}
 		}

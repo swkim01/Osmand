@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import net.osmand.data.LatLon;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.MapUtils;
 
 public class OsmMapUtils {
@@ -162,10 +163,10 @@ public class OsmMapUtils {
 		while (checkCycle && last > first) {
 			checkCycle = false;
 
-			double x1 = MapUtils.getTileNumberX(zoom, n.get(first).getLongitude());
-			double y1 = MapUtils.getTileNumberY(zoom, n.get(first).getLatitude());
-			double x2 = MapUtils.getTileNumberX(zoom, n.get(last).getLongitude());
-			double y2 = MapUtils.getTileNumberY(zoom, n.get(last).getLatitude());
+			double x1 = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, n.get(first).getLongitude(), n.get(first).getLatitude());
+			double y1 = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, n.get(first).getLongitude(), n.get(first).getLatitude());
+			double x2 = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, n.get(last).getLongitude(), n.get(last).getLatitude());
+			double y2 = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, n.get(last).getLongitude(), n.get(last).getLatitude());
 			if (Math.abs(x1 - x2) + Math.abs(y1 - y2) < 0.001) {
 				last--;
 				cycle = true;
@@ -236,10 +237,10 @@ public class OsmMapUtils {
 		LatLon p = MapUtils.getProjection(node.getLatitude(), node.getLongitude(), nodeLineStart.getLatitude(),
 				nodeLineStart.getLongitude(), nodeLineEnd.getLatitude(), nodeLineEnd.getLongitude());
 
-		double x1 = MapUtils.getTileNumberX(zoom, p.getLongitude());
-		double y1 = MapUtils.getTileNumberY(zoom, p.getLatitude());
-		double x2 = MapUtils.getTileNumberX(zoom, node.getLongitude());
-		double y2 = MapUtils.getTileNumberY(zoom, node.getLatitude());
+		double x1 = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, p.getLongitude(), p.getLatitude());
+		double y1 = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, p.getLongitude(), p.getLatitude());
+		double x2 = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, node.getLongitude(), node.getLatitude());
+		double y2 = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, node.getLongitude(), node.getLatitude());
 		double C = x2 - x1;
 		double D = y2 - y1;
 		return Math.sqrt(C * C + D * D);

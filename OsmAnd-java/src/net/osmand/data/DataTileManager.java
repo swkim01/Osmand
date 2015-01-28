@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.osmand.util.MapUtils;
+import net.osmand.map.TileSourceManager;
 
 /**
  * 
@@ -60,10 +60,10 @@ public class DataTileManager<T> {
 	}
 	
 	public List<T> getObjects(double latitudeUp, double longitudeUp, double latitudeDown, double longitudeDown) {
-		int tileXUp = (int) MapUtils.getTileNumberX(zoom, longitudeUp);
-		int tileYUp = (int) MapUtils.getTileNumberY(zoom, latitudeUp);
-		int tileXDown = (int) MapUtils.getTileNumberX(zoom, longitudeDown) + 1;
-		int tileYDown = (int) MapUtils.getTileNumberY(zoom, latitudeDown) + 1;
+		int tileXUp = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, longitudeUp, latitudeUp);
+		int tileYUp = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, longitudeUp, latitudeUp);
+		int tileXDown = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, longitudeDown, latitudeDown) + 1;
+		int tileYDown = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, longitudeDown, latitudeDown) + 1;
 		List<T> result = new ArrayList<T>();
 		for (int i = tileXUp; i <= tileXDown; i++) {
 			for (int j = tileYUp; j <= tileYDown; j++) {
@@ -114,8 +114,8 @@ public class DataTileManager<T> {
 	}
 		
 	public List<T> getClosestObjects(double latitude, double longitude, int startDepth, int depth){
-		int tileX = (int) MapUtils.getTileNumberX(zoom, longitude);
-		int tileY = (int) MapUtils.getTileNumberY(zoom, latitude);
+		int tileX = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, longitude, latitude);
+		int tileY = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, longitude, latitude);
 		List<T> result = new ArrayList<T>();
 		
 		if(startDepth <= 0){
@@ -155,8 +155,8 @@ public class DataTileManager<T> {
 	
 	
 	public long evaluateTile(double latitude, double longitude){
-		int tileX = (int) MapUtils.getTileNumberX(zoom, longitude);
-		int tileY = (int) MapUtils.getTileNumberY(zoom, latitude);
+		int tileX = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, longitude, latitude);
+		int tileY = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, longitude, latitude);
 		return evTile(tileX, tileY);
 	}
 	

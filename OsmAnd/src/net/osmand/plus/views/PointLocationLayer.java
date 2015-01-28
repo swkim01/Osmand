@@ -87,8 +87,8 @@ public class PointLocationLayer extends OsmandMapLayer {
 		if(lastKnownLocation == null || view == null){
 			return;
 		}
-		int locationX = box.getPixXFromLonNoRot(lastKnownLocation.getLongitude());
-		int locationY = box.getPixYFromLatNoRot(lastKnownLocation.getLatitude());
+		int locationX = box.getPixXFromLonNoRot(lastKnownLocation.getLongitude(), lastKnownLocation.getLatitude());
+		int locationY = box.getPixYFromLatNoRot(lastKnownLocation.getLongitude(), lastKnownLocation.getLatitude());
 
 		final double dist = box.getDistance(0, box.getPixHeight() / 2, box.getPixWidth(), box.getPixHeight() / 2);
 		int radius = (int) (((double) box.getPixWidth()) / dist * lastKnownLocation.getAccuracy());

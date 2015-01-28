@@ -32,6 +32,7 @@ import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.R;
 import net.osmand.plus.TargetPointsHelper;
 import net.osmand.plus.Version;
+import net.osmand.plus.activities.actions.InvokeNavigator;
 import net.osmand.plus.activities.actions.OsmAndDialogs;
 import net.osmand.plus.activities.actions.ShareLocation;
 import net.osmand.plus.activities.actions.StartGPSStatus;
@@ -40,6 +41,7 @@ import net.osmand.plus.development.OsmandDevelopmentPlugin;
 import net.osmand.plus.dialogs.ConfigureMapMenu;
 import net.osmand.plus.dialogs.FavoriteDialogs;
 import net.osmand.plus.helpers.WaypointDialogHelper;
+import net.osmand.plus.opengl.HeightMapActivity;
 import net.osmand.plus.osmo.OsMoPositionLayer;
 import net.osmand.plus.routing.RouteProvider.GPXRouteParamsBuilder;
 import net.osmand.plus.routing.RoutingHelper;
@@ -59,6 +61,14 @@ import android.support.v4.widget.DrawerLayout;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ListView;
+import android.widget.Toast;
 
 public class MapActivityActions implements DialogProvider {
 	
@@ -312,6 +322,10 @@ public class MapActivityActions implements DialogProvider {
 				R.drawable.ic_action_search_light).reg();
 		adapter.item(R.string.context_menu_item_share_location).icons(
 				R.drawable.ic_action_gshare_dark, R.drawable.ic_action_gshare_light).reg();
+		adapter.item(R.string.context_menu_item_invoke_navigator).icons(
+				R.drawable.ic_action_gshare_dark, R.drawable.ic_action_gshare_light).reg();
+		adapter.item(R.string.context_menu_item_invoke_3dmap).icons(
+				R.drawable.ic_action_gshare_dark, R.drawable.ic_action_gshare_light).reg();
 		adapter.item(R.string.context_menu_item_add_favorite).icons(
 				R.drawable.ic_action_fav_dark, R.drawable.ic_action_fav_light ).reg();
 		
@@ -355,6 +369,11 @@ public class MapActivityActions implements DialogProvider {
 				} else if (standardId == R.string.context_menu_item_share_location) {
 					enhance(dialogBundle,latitude,longitude,mapActivity.getMapView().getZoom());
 					new ShareLocation(mapActivity).run();
+				} else if (standardId == R.string.context_menu_item_invoke_navigator) {
+					enhance(dialogBundle,latitude,longitude,mapActivity.getMapView().getZoom());
+					new InvokeNavigator(mapActivity).run();
+				} else if (standardId == R.string.context_menu_item_invoke_3dmap) {
+					invoke3Dmap(latitude, longitude, mapActivity.getMapView().getZoom());
 				} else if (standardId == R.string.context_menu_item_add_favorite) {
 					addFavouritePoint(latitude, longitude);
 				}
@@ -511,9 +530,16 @@ public class MapActivityActions implements DialogProvider {
 				final RotatedTileBox tb = mapView.getCurrentRotatedTileBox();
 				final QuadRect tilesRect = tb.getTileBounds();
 				int left = (int) Math.floor(tilesRect.left);
-				int top = (int) Math.floor(tilesRect.top);
+				int top;
 				int width = (int) (Math.ceil(tilesRect.right) - left);
-				int height = (int) (Math.ceil(tilesRect.bottom) - top);
+				int height;
+				if (mapView.mapUtils.getVIndexOrder() > 0) {
+					top = (int) Math.floor(tilesRect.top);
+					height = (int) Math.ceil(tilesRect.bottom - top);
+				} else {
+					top = (int) Math.floor(tilesRect.bottom );
+					height = (int) Math.ceil(tilesRect.top - top);
+				}
 				for (int i = 0; i <width; i++) {
 					for (int j = 0; j< height; j++) {
 						((OsmandApplication)mapActivity.getApplication()).getResourceManager().
@@ -1087,5 +1113,16 @@ public class MapActivityActions implements DialogProvider {
 		}
 	}
 	
+	
+	protected void invoke3Dmap(final double latitude, final double longitude,
+                        final int zoom) {
+                String name = mapActivity.getMapLayers().getContextMenuLayer()
+                                .getSelectedObjectName();
+                Intent intent = new Intent(mapActivity, HeightMapActivity.class);
+                intent.putExtra("latitude", (float) latitude);
+                intent.putExtra("longitude", (float) longitude);
+                intent.putExtra("zoom", (int) zoom);
+                mapActivity.startActivity(intent);
+        }
     
 }

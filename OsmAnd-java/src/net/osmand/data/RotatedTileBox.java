@@ -1,4 +1,5 @@
 package net.osmand.data;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.MapUtils;
 
 public class RotatedTileBox {
@@ -16,6 +17,7 @@ public class RotatedTileBox {
 	private int cy;
 	private int pixWidth;
 	private int pixHeight;
+	private MapUtils mapUtils = TileSourceManager.mapUtilsList[0];
 
 	// derived
 	// all geometry math is done in tileX, tileY of phisycal given zoom
@@ -49,6 +51,7 @@ public class RotatedTileBox {
 		this.density = r.density;
 		this.cx = r.cx;
 		this.cy = r.cy;
+		this.mapUtils = r.mapUtils;
 		copyDerivedFields(r);
 	}
 
@@ -73,8 +76,8 @@ public class RotatedTileBox {
 		double rad = Math.toRadians(this.rotate);
 		rotateCos = Math.cos(rad);
 		rotateSin = Math.sin(rad);
-		oxTile = MapUtils.getTileNumberX(zoom, lon);
-		oyTile = MapUtils.getTileNumberY(zoom, lat);
+		oxTile = mapUtils.getTileNumberX(zoom, lon, lat);
+		oyTile = mapUtils.getTileNumberY(zoom, lon, lat);
 		while(rotate < 0){
 			rotate += 360;
 		}
@@ -87,11 +90,11 @@ public class RotatedTileBox {
 	}
 
 	public double getLatFromPixel(float x, float y) {
-		return MapUtils.getLatitudeFromTile(zoom, getTileYFromPixel(x, y));
+		return mapUtils.getLatitudeFromTile(zoom, getTileXFromPixel(x, y), getTileYFromPixel(x, y));
 	}
 
 	public double getLonFromPixel(float x, float y) {
-		return MapUtils.getLongitudeFromTile(zoom, getTileXFromPixel(x, y));
+		return mapUtils.getLongitudeFromTile(zoom, getTileXFromPixel(x, y), getTileYFromPixel(x, y));
 	}
 
 	public LatLon getLatLonFromPixel(float x, float y) {
@@ -151,9 +154,17 @@ public class RotatedTileBox {
 		float dy = y - cy;
 		double dtiley;
 		if(isMapRotateEnabled()){
-			dtiley = (-rotateSin * (float) dx + rotateCos * (float) dy);
+			if (mapUtils.getVIndexOrder() > 0) {
+				dtiley = (-rotateSin * (float) dx + rotateCos * (float) dy);
+			} else {
+				dtiley = (rotateSin * (float) dx - rotateCos * (float) dy);
+			}
 		} else {
-			dtiley = (float) dy;
+			if (mapUtils.getVIndexOrder() > 0) {
+				dtiley = (float) dy;
+			} else {
+				dtiley = (float) -dy;
+			}
 		}
 		return dtiley / zoomFactor + oyTile;
 	}
@@ -179,13 +190,21 @@ public class RotatedTileBox {
 		tileLB = new QuadPointDouble(x4, y4);
 		double l = Math.min(Math.min(x1, x2), Math.min(x3, x4)) ;
 		double r = Math.max(Math.max(x1, x2), Math.max(x3, x4)) ;
-		double t = Math.min(Math.min(y1, y2), Math.min(y3, y4)) ;
-		double b = Math.max(Math.max(y1, y2), Math.max(y3, y4)) ;
+		//double t = Math.min(Math.min(y1, y2), Math.min(y3, y4)) ;
+		//double b = Math.max(Math.max(y1, y2), Math.max(y3, y4)) ;
+		double t, b;
+		if (mapUtils.getVIndexOrder() > 0) {
+			t = Math.min(Math.min(y1, y2), Math.min(y3, y4));
+			b = Math.max(Math.max(y1, y2), Math.max(y3, y4));
+		} else {
+			b = Math.min(Math.min(y1, y2), Math.min(y3, y4));
+			t = Math.max(Math.max(y1, y2), Math.max(y3, y4));
+		}
 		tileBounds = new QuadRect((float)l, (float)t,(float) r, (float)b);
-		float top = (float) MapUtils.getLatitudeFromTile(zoom, alignTile(tileBounds.top));
-		float left = (float) MapUtils.getLongitudeFromTile(zoom, alignTile(tileBounds.left));
-		float bottom = (float) MapUtils.getLatitudeFromTile(zoom, alignTile(tileBounds.bottom));
-		float right = (float) MapUtils.getLongitudeFromTile(zoom, alignTile(tileBounds.right));
+		float top = (float) mapUtils.getLatitudeFromTile(zoom, alignTile(tileBounds.left), alignTile(tileBounds.top));
+		float left = (float) mapUtils.getLongitudeFromTile(zoom, alignTile(tileBounds.left), alignTile(tileBounds.top));
+		float bottom = (float) mapUtils.getLatitudeFromTile(zoom, alignTile(tileBounds.right), alignTile(tileBounds.bottom));
+		float right = (float) mapUtils.getLongitudeFromTile(zoom, alignTile(tileBounds.right), alignTile(tileBounds.bottom));
 		latLonBounds = new QuadRect(left, top, right, bottom);
 	}
 	
@@ -210,8 +229,8 @@ public class RotatedTileBox {
 
 
 	public float getPixXFromLatLon(double latitude, double longitude) {
-		double xTile = MapUtils.getTileNumberX(zoom, longitude);
-		double yTile = MapUtils.getTileNumberY(zoom, latitude);
+		double xTile = mapUtils.getTileNumberX(zoom, longitude, latitude);
+		double yTile = mapUtils.getTileNumberY(zoom, longitude, latitude);
 		return getPixXFromTile(xTile, yTile);
 	}
 	
@@ -227,7 +246,11 @@ public class RotatedTileBox {
 		final double dTileX = xTile - oxTile;
 		final double dTileY = yTile - oyTile;
 		if(isMapRotateEnabled()){
-			rotX = (rotateCos * dTileX - rotateSin * dTileY);
+			if (mapUtils.getVIndexOrder() > 0) {
+				rotX = (rotateCos * dTileX - rotateSin * dTileY);
+			} else {
+				rotX = (rotateCos * dTileX + rotateSin * dTileY);
+			}
 		} else {
 			rotX = dTileX;
 		}
@@ -237,8 +260,8 @@ public class RotatedTileBox {
 
 
 	public float getPixYFromLatLon(double latitude, double longitude) {
-		double  xTile = MapUtils.getTileNumberX(zoom, longitude);
-		double  yTile = MapUtils.getTileNumberY(zoom, latitude);
+		double  xTile = mapUtils.getTileNumberX(zoom, longitude, latitude);
+		double  yTile = mapUtils.getTileNumberY(zoom, longitude, latitude);
 		return getPixYFromTile(xTile, yTile);
 	}
 	
@@ -254,16 +277,24 @@ public class RotatedTileBox {
 		final double dTileY = yTile - oyTile;
 		double rotY;
 		if(isMapRotateEnabled()){
-			rotY = (rotateSin * dTileX + rotateCos * dTileY);
+			if (mapUtils.getVIndexOrder() > 0) {
+				rotY = (rotateSin * dTileX + rotateCos * dTileY);
+			} else {
+				rotY = (rotateSin * dTileX - rotateCos * dTileY);
+			}
 		} else {
-			rotY = dTileY;
+			if (mapUtils.getVIndexOrder() > 0) {
+				rotY = dTileY;
+			} else {
+				rotY = - dTileY;
+			}
 		}
 		double dy = rotY * zoomFactor;
 		return (float) (dy + cy);
 	}
 
-	public int getPixXFromLonNoRot(double longitude) {
-		double dTilex = (float) MapUtils.getTileNumberX(zoom, longitude) - oxTile;
+	public int getPixXFromLonNoRot(double longitude, double latitude) {
+		double dTilex = (float) mapUtils.getTileNumberX(zoom, longitude, latitude) - oxTile;
 		return (int) (dTilex * zoomFactor + cx);
 	}
 
@@ -272,14 +303,24 @@ public class RotatedTileBox {
 		return (int) (dTilex * zoomFactor + cx);
 	}
 
-	public int getPixYFromLatNoRot(double latitude) {
-		double dTileY  = MapUtils.getTileNumberY(zoom, latitude) - oyTile;
-		return (int) ((dTileY * zoomFactor) + cy);
+	public int getPixYFromLatNoRot(double longitude, double latitude) {
+		double dTileY  = mapUtils.getTileNumberY(zoom, longitude, latitude) - oyTile;
+		if (mapUtils.getVIndexOrder() > 0) {
+                        return (int) ((dTileY * zoomFactor) + cy);
+                }
+                else {
+                        return (int) ((-dTileY * zoomFactor) + cy);
+                }
 	}
 
 	public int getPixYFromTileYNoRot(double tileY) {
 		double dTileY  = tileY - oyTile;
-		return (int) ((dTileY * zoomFactor) + cy);
+		if (mapUtils.getVIndexOrder() > 0) {
+			return (int) ((dTileY * zoomFactor) + cy);
+                }
+                else {
+			return (int) ((-dTileY * zoomFactor) + cy);
+		}
 	}
 
 
@@ -369,8 +410,8 @@ public class RotatedTileBox {
 
 	public LatLon getLeftTopLatLon() {
 		checkTileRectangleCalculated();
-		return new LatLon(MapUtils.getLatitudeFromTile(zoom, alignTile(tileLT.y)),
-				MapUtils.getLongitudeFromTile(zoom, alignTile(tileLT.x)));
+		return new LatLon(mapUtils.getLatitudeFromTile(zoom, alignTile(tileLT.x), alignTile(tileLT.y)),
+				mapUtils.getLongitudeFromTile(zoom, alignTile(tileLT.x), alignTile(tileLT.y)));
 
 	}
 	
@@ -396,8 +437,8 @@ public class RotatedTileBox {
 
 	public LatLon getRightBottomLatLon() {
 		checkTileRectangleCalculated();
-		return new LatLon(MapUtils.getLatitudeFromTile(zoom, alignTile(tileRB.y)),
-				MapUtils.getLongitudeFromTile(zoom, alignTile(tileRB.x)));
+		return new LatLon(mapUtils.getLatitudeFromTile(zoom, alignTile(tileRB.x), alignTile(tileRB.y)),
+				mapUtils.getLongitudeFromTile(zoom, alignTile(tileRB.x), alignTile(tileRB.y)));
 	}
 
 	public void setMapDensity(double mapDensity) {
@@ -561,4 +602,12 @@ public class RotatedTileBox {
 		return lat;
 	}
 
+	public void setMapUtils(MapUtils mapUtils) {
+		this.mapUtils = mapUtils;
+		calculateDerivedFields();
+	}
+
+	public MapUtils getMapUtils() {
+		return this.mapUtils;
+	}
 }

@@ -169,11 +169,11 @@ public class DownloadedRegionsLayer extends OsmandMapLayer {
 
 				double lat = MapUtils.get31LatitudeY(o.getPoint31YTile(0));
 				double lon = MapUtils.get31LongitudeX(o.getPoint31XTile(0));
-				path.moveTo(tileBox.getPixXFromLonNoRot(lon), tileBox.getPixYFromLatNoRot(lat));
+				path.moveTo(tileBox.getPixXFromLonNoRot(lon, lat), tileBox.getPixYFromLatNoRot(lon, lat));
 				for (int j = 1; j < o.getPointsLength(); j++) {
 					lat = MapUtils.get31LatitudeY(o.getPoint31YTile(j));
 					lon = MapUtils.get31LongitudeX(o.getPoint31XTile(j));
-					path.lineTo(tileBox.getPixXFromLonNoRot(lon), tileBox.getPixYFromLatNoRot(lat));
+					path.lineTo(tileBox.getPixXFromLonNoRot(lon, lat), tileBox.getPixYFromLatNoRot(lon, lat));
 				}
 			}
 			canvas.drawPath(path, paint);

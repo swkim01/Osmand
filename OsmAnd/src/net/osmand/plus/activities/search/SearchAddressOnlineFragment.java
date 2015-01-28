@@ -1,6 +1,8 @@
 package net.osmand.plus.activities.search;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
@@ -29,6 +31,8 @@ import net.osmand.util.Algorithms;
 import net.osmand.util.MapUtils;
 
 import org.apache.commons.logging.Log;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 
 import android.content.Context;
@@ -51,6 +55,9 @@ public class SearchAddressOnlineFragment extends Fragment implements SearchActiv
 	private LatLon location;
 	private final static Log log = PlatformUtil.getLog(SearchAddressOnlineFragment.class);
 
+	private int site=0; // 0: OSM, 1: Googlemap
+	private static String searchString;
+	private String nextToken = null;
 	private static PlacesAdapter adapter = null;
 	private OsmandSettings settings;
 	private View view;
@@ -108,6 +115,21 @@ public class SearchAddressOnlineFragment extends Fragment implements SearchActiv
 		});
 		setHasOptionsMenu(true);
 		location = settings.getLastKnownMapLocation();
+		Button siteButton = (Button) view.findViewById(R.id.SiteButton);
+		siteButton.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v) {
+				if (site == 0) {
+					site = 1;
+					//((TextView) view.findViewById(R.id.SearchOnlineTextView)).setText(R.string.search_googlemap);
+					((Button) view.findViewById(R.id.SiteButton)).setText(R.string.search_site_osm);
+				} else {
+					site = 0;
+					//((TextView) view.findViewById(R.id.SearchOnlineTextView)).setText(R.string.search_osm_nominatim);
+					((Button) view.findViewById(R.id.SiteButton)).setText(R.string.search_site_googlemap);
+				}
+			}
+		});
 		ListView lv = (ListView) view.findViewById(android.R.id.list);
 		lv.setAdapter(adapter);
 		lv.setOnItemClickListener(this);
@@ -147,6 +169,7 @@ public class SearchAddressOnlineFragment extends Fragment implements SearchActiv
 		if(Algorithms.isEmpty(search)){
 			return;
 		}
+		searchString = new String(search);
 		new AsyncTask<Void, Void, Void>() {
 			List<Place> places = null;
 			String warning = null;
@@ -155,6 +178,7 @@ public class SearchAddressOnlineFragment extends Fragment implements SearchActiv
 			};
 			@Override
 			protected Void doInBackground(Void... params) {
+			  if (site == 0) {
 				try {
 					
 					final int deviceApiVersion = android.os.Build.VERSION.SDK_INT;
@@ -212,7 +236,66 @@ public class SearchAddressOnlineFragment extends Fragment implements SearchActiv
 					log.error("Error searching address", e); //$NON-NLS-1$
 					warning = getString(R.string.error_io_error) + " : " + e.getMessage();
 				}
-				return null;
+			  }
+			  else {
+				try {
+					final List<Place> places = new ArrayList<Place>();
+					StringBuilder b = new StringBuilder();
+					b.append("https://maps.googleapis.com/maps/api/place/textsearch/"); //$NON-NLS-1$
+					b.append("json?language=").append(Locale.getDefault().getLanguage()); //$NON-NLS-1$
+					b.append("&query=").append(URLEncoder.encode(searchString)); //$NON-NLS-1$
+					b.append("&key=").append("AIzaSyCh31Jl5GL4DipOljNf0cpPBa4mBwfmatw"); //$NON_NLS-1$
+					if (nextToken != null)
+						b.append("&pagetoken=").append(nextToken); //$NON_NLS-1$
+						
+					//log.info("Searching address at : " + b.toString());
+					URL url = new URL(b.toString());
+					URLConnection conn = url.openConnection();
+					conn.setDoInput(true);
+					conn.connect();
+				
+					InputStream is = conn.getInputStream();
+					StringBuilder stringBuilder = new StringBuilder();
+					String line = null;		
+					//BufferedReader buffer = new BufferedReader(new InputStreamReader(is, "MS949")); // Korean language
+					BufferedReader buffer = new BufferedReader(new InputStreamReader(is));
+					while((line = buffer.readLine()) != null){
+						stringBuilder.append(line);
+					}
+					String jsonString = stringBuilder.toString();
+					JSONArray responseArray = null;
+					JSONObject jsonObject = new JSONObject(jsonString);
+					if (jsonObject.getJSONArray("results") != null) {
+						if (!jsonObject.isNull("next_page_token"))
+							nextToken = jsonObject.getString("next_page_token");
+						responseArray = jsonObject.getJSONArray("results");
+						for(int i = 0; i < responseArray.length(); i++) {
+							JSONObject jsl = responseArray.getJSONObject(i);
+							Double lat = jsl.getJSONObject("geometry").getJSONObject("location").getDouble("lat"); //$NON-NLS-1$ //$NON-NLS-2$
+							Double lon = jsl.getJSONObject("geometry").getJSONObject("location").getDouble("lng"); //$NON-NLS-1$ //$NON-NLS-2$
+							String displayName = jsl.getString("name"); //$NON-NLS-1$ //$NON-NLS-2$
+							if(lat != null && lon != null && displayName != null){
+								Place p = new Place();
+								p.lat = lat;
+								p.lon = lon;
+								p.displayName = displayName;
+								places.add(p);
+							}
+						}
+					}
+					is.close();
+					if(places.isEmpty()){
+						this.places = null;
+						warning = getString(R.string.search_nothing_found);
+					} else {
+						this.places = places;
+					}
+				} catch(Exception e){
+					log.error("Error searching address", e); //$NON-NLS-1$
+					warning = getString(R.string.error_io_error) + " : " + e.getMessage();
+				}
+			  }
+			  return null;
 			}
 			protected void onPostExecute(Void result) {
 				view.findViewById(R.id.ProgressBar).setVisibility(View.INVISIBLE);

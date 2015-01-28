@@ -2,6 +2,8 @@ package net.osmand.map;
 
 import java.io.IOException;
 
+import net.osmand.util.MapUtils;
+
 public interface ITileSource {
 
 	public int getMaximumZoomSupported();
@@ -23,6 +25,8 @@ public interface ITileSource {
 	public boolean isEllipticYTile();
 
 	public boolean couldBeDownloadedFromInternet();
+
+	public MapUtils getMapUtils();
 
 	public int getExpirationTimeMillis();
 

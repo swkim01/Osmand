@@ -243,6 +243,7 @@
 
 		<receiver android:name="net.osmand.plus.OnNavigationServiceAlarmReceiver" />
 		<activity android:name="net.osmand.plus.activities.PrintDialogActivity" />
+		<activity android:name="net.osmand.plus.opengl.HeightMapActivity" />
 		
 		<receiver
 			android:name="net.osmand.plus.DeviceAdminRecv"

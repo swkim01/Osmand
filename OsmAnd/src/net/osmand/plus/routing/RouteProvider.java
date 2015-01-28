@@ -1,6 +1,7 @@
 package net.osmand.plus.routing;
 
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,15 +58,21 @@ import net.osmand.router.RoutingConfiguration.Builder;
 import net.osmand.router.RoutingContext;
 import net.osmand.router.TurnType;
 import net.osmand.util.Algorithms;
+import net.osmand.util.GeoPoint;
+import net.osmand.util.GeoTrans;
 import net.osmand.util.MapUtils;
 
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
+import org.xmlpull.v1.XmlPullParserException;
 
 import android.content.Context;
 import android.os.Build;
@@ -80,7 +87,7 @@ public class RouteProvider {
 	public enum RouteService {
 			OSMAND("OsmAnd (offline)"), YOURS("YOURS"), 
 			ORS("OpenRouteService"), OSRM("OSRM (only car)"),
-			BROUTER("BRouter (offline)"), STRAIGHT("Straight line");
+			BROUTER("BRouter (offline)"), STRAIGHT("Straight line"), DAUM("Daum(Korea)"), NAVER("Naver(Korea)");
 		private final String name;
 		private RouteService(String name){
 			this.name = name;
@@ -313,6 +320,10 @@ public class RouteProvider {
 					res = findOSRMRoute(params);
 				} else if (params.type == RouteService.STRAIGHT){
 					res = findStraightRoute(params);
+				} else if (params.type == RouteService.DAUM){
+					res = findDaumRoute(params);
+				} else if (params.type == RouteService.NAVER){
+					res = findNaverRoute(params);
 				}
 				else {
 					res = new RouteCalculationResult("Selected route service is not available");
@@ -1231,4 +1242,176 @@ public class RouteProvider {
 		return new RouteCalculationResult(dots, null, params, null);
 	}
 
+	protected RouteCalculationResult findDaumRoute(RouteCalculationParams params) throws MalformedURLException, IOException,
+		JSONException, ParserConfigurationException, FactoryConfigurationError {
+		List<Location> res = new ArrayList<Location>();
+		StringBuilder uri = new StringBuilder();
+		//MODE=SHORTEST_REALTIME,SHORTEST_TIME,SHORTEST_DIST
+		//OPTION=NONE,BIKE,FREEWAY
+		if (ApplicationMode.PEDESTRIAN == params.mode) {
+			uri.append("http://map.daum.net/route/walk.json?walkMode=RECOMMENDATION"); //$NON-NLS-1$
+			uri.append("&walkOption=NONE"); //$NON-NLS-1$
+		}
+		//else if (ApplicationMode.BICYCLE == params.mode) {
+		//	uri.append("&routeOption=BIKE") ; //$NON-NLS-1$
+		//}
+		else {
+			uri.append("http://map.daum.net/route/car.json?carMode=SHORTEST_REALTIME"); //$NON-NLS-1$
+			uri.append("&carOption=NONE"); //$NON-NLS-1$
+		}
+		
+		GeoPoint gpStart = new GeoPoint(params.start.getLongitude(),params.start.getLatitude());
+		GeoPoint gptmStart = GeoTrans.convert(GeoTrans.GEO, GeoTrans.GRS80, gpStart);
+		uri.append("&sX=").append((int)(gptmStart.getX()*2.5)); //$NON-NLS-1$
+		uri.append("&sY=").append((int)(gptmStart.getY()*2.5)); //$NON-NLS-1$
+		if(params.intermediates != null && params.intermediates.size() > 0) {
+			for(LatLon il : params.intermediates) {
+				GeoPoint gp = new GeoPoint(il.getLongitude(),il.getLatitude());
+				GeoPoint gptm = GeoTrans.convert(GeoTrans.GEO, GeoTrans.GRS80, gp);
+				uri.append("&u2X=").append((int)(gptm.getX()*2.5)); //$NON-NLS-1$
+				uri.append("&u2Y=").append((int)(gptm.getY()*2.5)); //$NON-NLS-1$
+			}
+		}
+		GeoPoint gpEnd = new GeoPoint(params.end.getLongitude(),params.end.getLatitude());
+		GeoPoint gptmEnd = GeoTrans.convert(GeoTrans.GEO, GeoTrans.GRS80, gpEnd);
+		uri.append("&eX=").append((int)(gptmEnd.getX()*2.5)); //$NON-NLS-1$
+		uri.append("&eY=").append((int)(gptmEnd.getY()*2.5)); //$NON-NLS-1$
+		
+		//log.error("DaumRoute" + " uri="+ uri);
+		URL url = new URL(uri.toString());
+		URLConnection connection = url.openConnection();
+		
+		StringBuilder jsonData = new StringBuilder();
+		String line = null;
+		
+		BufferedReader buffer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+		while ((line = buffer.readLine()) != null) {
+			jsonData.append(line);
+		}
+		
+		JSONObject json = new JSONObject(jsonData.toString());
+		JSONArray sections = json.getJSONArray("sections");
+		float routingTime = 0;
+		
+		if (ApplicationMode.PEDESTRIAN == params.mode) {
+			for (int i = 0; i < sections.length(); i++) {
+				JSONArray links = sections.getJSONObject(i).getJSONArray("guideList");
+
+				for (int a=0; a<links.length()-1; a++) {
+					JSONObject jsl = links.getJSONObject(a).getJSONObject("link");
+					String temp = jsl.getString("points");
+
+					String temp2[] = temp.split("\\\u007c"); // "|"
+					int count = temp2.length;
+					
+					for (int b=0; b<count; b++) {
+						String[] one = temp2[b].split(",");
+						
+						GeoPoint gptm = new GeoPoint(Double.parseDouble(one[0])/2.5,Double.parseDouble(one[1])/2.5);
+						GeoPoint gp = GeoTrans.convert(GeoTrans.GRS80, GeoTrans.GEO, gptm);
+						
+						Location l = new Location("router"); //$NON-NLS-1$
+						l.setLatitude(gp.getY());
+						l.setLongitude(gp.getX());
+						res.add(l);
+					}
+				}
+			}
+			routingTime = Float.parseFloat(json.getString("time"));
+		}
+		else {
+			for (int i = 0; i < sections.length(); i++) {
+				JSONArray links = sections.getJSONObject(i).getJSONArray("links");
+				
+				for (int a=0; a<links.length(); a++) {
+					JSONObject jsl = links.getJSONObject(a);
+					String temp = jsl.getString("points");
+					
+					String temp2[] = temp.split(",");
+					int count = temp2.length;
+					
+					//log.info("DaumRoute" + " points="+ temp2[0]);
+					for (int b=0; b<count; b++) {
+						String[] one = temp2[b].split(" ");
+						
+						GeoPoint gptm = new GeoPoint(Double.parseDouble(one[0])/2.5,Double.parseDouble(one[1])/2.5);
+						GeoPoint gp = GeoTrans.convert(GeoTrans.GRS80, GeoTrans.GEO, gptm);
+						
+						Location l = new Location("router"); //$NON-NLS-1$
+						l.setLatitude(gp.getY());
+						l.setLongitude(gp.getX());
+						res.add(l);
+					}
+				}
+			}
+			routingTime = Float.parseFloat(json.getString("expectedTime"));
+		}
+		//return new RouteCalculationResult(res, params.start, params.end, params.intermediates, params.ctx, params.leftSide, routingTime, null);
+		return new RouteCalculationResult(res, null, params, null);
+	}
+	
+	protected RouteCalculationResult findNaverRoute(RouteCalculationParams params) throws MalformedURLException, IOException,
+		JSONException, ParserConfigurationException, FactoryConfigurationError {
+		List<Location> res = new ArrayList<Location>();
+		StringBuilder uri = new StringBuilder();
+		//option:findCarRoute.nhn,findCarRoute.nhn,findWalkRoute.nhn
+		if (ApplicationMode.PEDESTRIAN == params.mode) {
+			uri.append("http://map.naver.com/findroute2/findWalkRoute.nhn?search=0&call=route2&output=json") ; //$NON-NLS-1$
+		} else if (ApplicationMode.BICYCLE == params.mode) {
+			uri.append("http://map.naver.com/findroute2/findCarRoute.nhn?&search=5&call=route2&output=json") ; //$NON-NLS-1$
+		} else {
+			uri.append("http://map.naver.com/findroute2/findCarRoute.nhn?search=2&call=route2&output=json&car=0&mileage=12.4"); //$NON-NLS-1$
+		}
+		uri.append("&start=").append(params.start.getLongitude()); //$NON-NLS-1$
+		uri.append("%2C").append(params.start.getLatitude()); //$NON-NLS-1$
+		uri.append("%2C%20");
+		uri.append("&destination=").append(params.end.getLongitude()); //$NON-NLS-1$
+		uri.append("%2C").append(params.end.getLatitude()); //$NON-NLS-1$
+		uri.append("%2C%20");
+		uri.append("&via=");
+		if(params.intermediates != null && params.intermediates.size() > 0) {
+			for(LatLon il : params.intermediates) {
+				if (il != params.intermediates.get(0))
+					uri.append("%2C");
+				uri.append(il.getLongitude()); //$NON-NLS-1$
+				uri.append("%2C").append(il.getLatitude()); //$NON-NLS-1$
+				uri.append("%2C%20");
+			}
+		}
+		
+		URL url = new URL(uri.toString());
+		URLConnection connection = url.openConnection();
+		
+		StringBuilder jsonData = new StringBuilder();
+		String line = null;
+		
+		BufferedReader buffer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+		while((line = buffer.readLine()) != null) {
+			jsonData.append(line);
+		}
+		
+		//log.info("NaverRoute" + " uri="+ uri);
+		JSONObject json = new JSONObject(jsonData.toString());
+		String path = json.getString("path");
+		
+		String temp2[] = path.split(" ");
+		int total = temp2.length;
+		
+		for (int i = 0; i < total; i++) {
+			String[] one = temp2[i].split(",");
+			
+			GeoPoint gpkatec = new GeoPoint((Double.parseDouble(one[0])-340000000)/10,(Double.parseDouble(one[1])-130000000)/10);
+			GeoPoint gp = GeoTrans.convert(GeoTrans.UTMK, GeoTrans.GEO, gpkatec);
+			
+			Location l = new Location("router"); //$NON-NLS-1$
+			l.setLatitude(gp.getY());
+			l.setLongitude(gp.getX());
+			res.add(l);
+		}
+		JSONObject summary = json.getJSONObject("summary");
+		float routingTime = Float.parseFloat(summary.getString("totalTime"));
+		//return new RouteCalculationResult(res, params.start, params.end, params.intermediates, params.ctx, params.leftSide, routingTime, null);
+		return new RouteCalculationResult(res, null, params, null);
+	}
+	
 }

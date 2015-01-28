@@ -128,15 +128,15 @@ public class OsMoPositionLayer extends OsmandMapLayer implements ContextMenuLaye
 			Location l = t.getLastLocation();
 			ConcurrentLinkedQueue<Location> plocations = t.getPreviousLocations(treshold);
 			if (!plocations.isEmpty() && l != null) {
-				int x = (int) tileBox.getPixXFromLonNoRot(l.getLongitude());
-				int y = (int) tileBox.getPixYFromLatNoRot(l.getLatitude());
+				int x = (int) tileBox.getPixXFromLonNoRot(l.getLongitude(), l.getLatitude());
+				int y = (int) tileBox.getPixYFromLatNoRot(l.getLongitude(), l.getLatitude());
 				pth.rewind();
 				Iterator<Location> it = plocations.iterator();
 				boolean f = true;
 				while (it.hasNext()) {
 					Location lo = it.next();
-					int xt = (int) tileBox.getPixXFromLonNoRot(lo.getLongitude());
-					int yt = (int) tileBox.getPixYFromLatNoRot(lo.getLatitude());
+					int xt = (int) tileBox.getPixXFromLonNoRot(lo.getLongitude(), lo.getLatitude());
+					int yt = (int) tileBox.getPixYFromLatNoRot(lo.getLongitude(), lo.getLatitude());
 					if (f) {
 						f = false;
 						pth.moveTo(xt, yt);

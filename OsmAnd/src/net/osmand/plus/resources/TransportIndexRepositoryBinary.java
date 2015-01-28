@@ -16,6 +16,7 @@ import net.osmand.binary.BinaryMapIndexReader.SearchRequest;
 import net.osmand.data.LatLon;
 import net.osmand.data.TransportRoute;
 import net.osmand.data.TransportStop;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.MapUtils;
 
 import org.apache.commons.logging.Log;
@@ -138,12 +139,12 @@ public class TransportIndexRepositoryBinary implements TransportIndexRepository 
 	public List<RouteInfoLocation> searchTransportRouteStops(double latitude, double longitude, LatLon locationToGo, int zoom) {
 		long now = System.currentTimeMillis();
 		final LatLon loc = new LatLon(latitude, longitude);
-		double tileNumberX = MapUtils.getTileNumberX(zoom, longitude);
-		double tileNumberY = MapUtils.getTileNumberY(zoom, latitude);
-		double topLatitude = MapUtils.getLatitudeFromTile(zoom, tileNumberY - 0.5);
-		double bottomLatitude = MapUtils.getLatitudeFromTile(zoom, tileNumberY + 0.5);
-		double leftLongitude = MapUtils.getLongitudeFromTile(zoom, tileNumberX - 0.5);
-		double rightLongitude = MapUtils.getLongitudeFromTile(zoom, tileNumberX + 0.5);
+		double tileNumberX = TileSourceManager.mapUtilsList[0].getTileNumberX(zoom, longitude, latitude);
+		double tileNumberY = TileSourceManager.mapUtilsList[0].getTileNumberY(zoom, longitude, latitude);
+		double topLatitude = TileSourceManager.mapUtilsList[0].getLatitudeFromTile(zoom, tileNumberY - 0.5);
+		double bottomLatitude = TileSourceManager.mapUtilsList[0].getLatitudeFromTile(zoom, tileNumberY + 0.5);
+		double leftLongitude = TileSourceManager.mapUtilsList[0].getLongitudeFromTile(zoom, tileNumberX - 0.5);
+		double rightLongitude = TileSourceManager.mapUtilsList[0].getLongitudeFromTile(zoom, tileNumberX + 0.5);
 		SearchRequest<TransportStop> req = BinaryMapIndexReader.buildSearchTransportRequest(MapUtils.get31TileNumberX(leftLongitude),
 				MapUtils.get31TileNumberX(rightLongitude), MapUtils.get31TileNumberY(topLatitude), MapUtils
 						.get31TileNumberY(bottomLatitude), -1, null);

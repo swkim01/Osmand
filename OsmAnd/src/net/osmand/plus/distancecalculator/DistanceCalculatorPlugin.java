@@ -483,8 +483,8 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 					boolean first = true;
 					while (it.hasNext()) {
 						WptPt point = it.next();
-						int locationX = tileBox.getPixXFromLonNoRot(point.lon);
-						int locationY = tileBox.getPixYFromLatNoRot(point.lat);
+						int locationX = tileBox.getPixXFromLonNoRot(point.lon, point.lat);
+						int locationY = tileBox.getPixYFromLatNoRot(point.lon, point.lat);
 						if (first) {
 							path.moveTo(locationX, locationY);
 							first = false;
@@ -500,8 +500,8 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 					while(it.hasNext()) {
 						WptPt pt = it.next();
 						if (tileBox.containsLatLon(pt.lat, pt.lon)) {
-							int locationX = tileBox.getPixXFromLonNoRot(pt.lon);
-							int locationY = tileBox.getPixYFromLatNoRot(pt.lat);
+							int locationX = tileBox.getPixXFromLonNoRot(pt.lon, pt.lat);
+							int locationY = tileBox.getPixYFromLatNoRot(pt.lon, pt.lat);
 							
 							if(first || !it.hasNext() || pt.desc != null) {
 								canvas.rotate(-view.getRotate(), locationX, locationY);

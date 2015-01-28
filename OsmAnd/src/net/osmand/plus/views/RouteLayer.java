@@ -162,13 +162,13 @@ public class RouteLayer extends OsmandMapLayer {
 		if (points.size() > 0) {
 			paint.setStrokeWidth(12 * tb.getDensity());
 			
-			int px = tb.getPixXFromLonNoRot(points.get(0).getLongitude());
-			int py = tb.getPixYFromLatNoRot(points.get(0).getLatitude());
+			int px = tb.getPixXFromLonNoRot(points.get(0).getLongitude(), points.get(0).getLatitude());
+			int py = tb.getPixYFromLatNoRot(points.get(0).getLongitude(), points.get(0).getLatitude());
 			path.moveTo(px, py);
 			for (int i = 1; i < points.size(); i++) {
 				Location o = points.get(i);
-				int x = tb.getPixXFromLonNoRot(o.getLongitude());
-				int y = tb.getPixYFromLatNoRot(o.getLatitude());
+				int x = tb.getPixXFromLonNoRot(o.getLongitude(), o.getLatitude());
+				int y = tb.getPixYFromLatNoRot(o.getLongitude(), o.getLatitude());
 				path.lineTo(x, y);
 			}
 			if(isPaint_1) {

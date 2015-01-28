@@ -76,8 +76,8 @@ public class MapTextLayer extends OsmandMapLayer {
 							.getLongitude());
 					int y = (int) tileBox.getPixYFromLatLon(location.getLatitude(), location
 							.getLongitude());
-					int tx = tileBox.getPixXFromLonNoRot(location.getLongitude());
-					int ty = tileBox.getPixYFromLatNoRot(location.getLatitude());
+					int tx = tileBox.getPixXFromLonNoRot(location.getLongitude(), location.getLatitude());
+					int ty = tileBox.getPixYFromLatNoRot(location.getLongitude(), location.getLatitude());
 					String name = ((MapTextProvider) l).getText(o);
 					if (name != null && name.length() > 0) {
 						int lines = 0;

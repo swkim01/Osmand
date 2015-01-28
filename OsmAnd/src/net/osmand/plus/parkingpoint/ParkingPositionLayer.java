@@ -91,8 +91,8 @@ public class ParkingPositionLayer extends OsmandMapLayer implements ContextMenuL
 		if (isLocationVisible(tb, latitude, longitude)) {
 			int marginX = parkingNoLimitIcon.getWidth() / 2;
 			int marginY = parkingNoLimitIcon.getHeight();
-			int locationX = tb.getPixXFromLonNoRot(longitude);
-			int locationY = tb.getPixYFromLatNoRot(latitude);
+			int locationX = tb.getPixXFromLonNoRot(longitude, latitude);
+			int locationY = tb.getPixYFromLatNoRot(longitude, latitude);
 			canvas.rotate(-view.getRotate(), locationX, locationY);
 			canvas.drawBitmap(parkingIcon, locationX - marginX, locationY - marginY, bitmapPaint);
 		}

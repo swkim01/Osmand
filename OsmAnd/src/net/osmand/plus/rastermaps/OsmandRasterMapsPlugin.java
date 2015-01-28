@@ -274,7 +274,11 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 		AsyncTask<Void, Void, List<TileSourceTemplate>> t = new AsyncTask<Void, Void, List<TileSourceTemplate>>() {
 			@Override
 			protected List<TileSourceTemplate> doInBackground(Void... params) {
-				return TileSourceManager.downloadTileSourceTemplates(Version.getVersionAsURLParam(app));
+				File tPath = app.getAppPath(IndexConstants.TILES_INDEX_DIR);
+				List<TileSourceTemplate> availableSourceTemplates = TileSourceManager.getLocalTileSourceTemplates(tPath);
+                                availableSourceTemplates.addAll(TileSourceManager.downloadTileSourceTemplates(Version.getVersionAsURLParam(app)));
+                                return availableSourceTemplates;
+				//return TileSourceManager.downloadTileSourceTemplates(Version.getVersionAsURLParam(app));
 			}
 			protected void onPostExecute(final java.util.List<TileSourceTemplate> downloaded) {
 				if (downloaded == null || downloaded.isEmpty()) {

@@ -22,6 +22,7 @@ import net.osmand.data.City.CityType;
 import net.osmand.data.LatLon;
 import net.osmand.data.MapObject;
 import net.osmand.data.Street;
+import net.osmand.map.TileSourceManager;
 import net.osmand.util.MapUtils;
 import net.sf.junidecode.Junidecode;
 
@@ -292,7 +293,7 @@ public class BinaryMapAddressReaderAdapter {
 				if(loadLocation){
 					x =  sx + city24X;
 				} else {
-					x = (int) MapUtils.getTileNumberX(24, s.getLocation().getLongitude());
+					x = (int) TileSourceManager.mapUtilsList[0].getTileNumberX(24, s.getLocation().getLongitude(), s.getLocation().getLatitude());
 				}
 				break;
 			case OsmandOdb.StreetIndex.Y_FIELD_NUMBER :
@@ -300,7 +301,7 @@ public class BinaryMapAddressReaderAdapter {
 				if(loadLocation){
 					y =  sy + city24Y;
 				} else {
-					y = (int) MapUtils.getTileNumberY(24, s.getLocation().getLatitude());
+					y = (int) TileSourceManager.mapUtilsList[0].getTileNumberY(24, s.getLocation().getLongitude(), s.getLocation().getLatitude());
 				}
 				break;
 			case OsmandOdb.StreetIndex.INTERSECTIONS_FIELD_NUMBER :

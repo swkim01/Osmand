@@ -326,16 +326,16 @@ public class GPXLayer extends OsmandMapLayer implements ContextMenuLayer.IContex
 
 	
 	private void drawSegment(Canvas canvas, RotatedTileBox tb, List<WptPt> l, int startIndex, int endIndex) {
-		int px = tb.getPixXFromLonNoRot(l.get(startIndex).lon);
-		int py = tb.getPixYFromLatNoRot(l.get(startIndex).lat);
+		int px = tb.getPixXFromLonNoRot(l.get(startIndex).lon, l.get(startIndex).lat);
+		int py = tb.getPixYFromLatNoRot(l.get(startIndex).lon, l.get(startIndex).lat);
 		path.moveTo(px, py);
 		for (int i = startIndex + 1; i <= endIndex; i++) {
 			WptPt p = l.get(i);
 			if(isPointVisited(p)) {
 				continue;
 			}
-			int x = tb.getPixXFromLonNoRot(p.lon);
-			int y = tb.getPixYFromLatNoRot(p.lat);
+			int x = tb.getPixXFromLonNoRot(p.lon, p.lat);
+			int y = tb.getPixYFromLatNoRot(p.lon, p.lat);
 			path.lineTo(x, y);
 		}
 		if(isPaint_1) {

@@ -82,12 +82,12 @@ public class DownloadTilesDialog {
 		final String template = ctx.getString(R.string.tiles_to_download_estimated_size);
 		
 		
-		updateLabel(zoom, rb.getLatLonBounds(), downloadText, template, seekBar.getProgress());
+		updateLabel(zoom, rb.getLatLonBounds(), downloadText, template, seekBar.getProgress(), mapSource);
 		seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
 
 			@Override
 			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-				updateLabel(zoom, rb.getLatLonBounds(), downloadText, template, progress);
+				updateLabel(zoom, rb.getLatLonBounds(), downloadText, template, progress, mapSource);
 			}
 
 			@Override
@@ -118,11 +118,15 @@ public class DownloadTilesDialog {
 		cancel = false;
 		int numberTiles = 0;
 		for (int z = zoom; z <= progress + zoom; z++) {
-			int x1 = (int) MapUtils.getTileNumberX(z, latlonRect.left);
-			int x2 = (int) MapUtils.getTileNumberX(z, latlonRect.right);
-			int y1 = (int) MapUtils.getTileNumberY(z, latlonRect.top);
-			int y2 = (int) MapUtils.getTileNumberY(z, latlonRect.bottom);
-			numberTiles += (x2 - x1 + 1) * (y2 - y1 + 1);
+			int x1 = (int) map.getMapUtils().getTileNumberX(z, latlonRect.left, latlonRect.top);
+			int x2 = (int) map.getMapUtils().getTileNumberX(z, latlonRect.right, latlonRect.bottom);
+			int y1 = (int) map.getMapUtils().getTileNumberY(z, latlonRect.left, latlonRect.top);
+			int y2 = (int) map.getMapUtils().getTileNumberY(z, latlonRect.right, latlonRect.bottom);
+			if (map.getMapUtils().getVIndexOrder() > 0) {
+				numberTiles += (x2 - x1 + 1) * (y2 - y1 + 1);
+			} else {
+				numberTiles += (x2 - x1 + 1) * (y1 - y2 + 1);
+			}
 		}
 		final ProgressDialog progressDlg = new ProgressDialog(ctx);
 		progressDlg.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
@@ -159,10 +163,16 @@ public class DownloadTilesDialog {
 				try {
 					ResourceManager rm = app.getResourceManager();
 					for (int z = zoom; z <= zoom + progress && !cancel; z++) {
-						int x1 = (int) MapUtils.getTileNumberX(z, latlonRect.left);
-						int x2 = (int) MapUtils.getTileNumberX(z, latlonRect.right);
-						int y1 = (int) MapUtils.getTileNumberY(z, latlonRect.top);
-						int y2 = (int) MapUtils.getTileNumberY(z, latlonRect.bottom);
+						int x1 = (int) map.getMapUtils().getTileNumberX(z, latlonRect.left, latlonRect.top);
+						int x2 = (int) map.getMapUtils().getTileNumberX(z, latlonRect.right, latlonRect.bottom);
+						int y1, y2;
+						if (map.getMapUtils().getVIndexOrder() > 0) {
+							y1 = (int) map.getMapUtils().getTileNumberY(z, latlonRect.left, latlonRect.top);
+							y2 = (int) map.getMapUtils().getTileNumberY(z, latlonRect.right, latlonRect.bottom);
+						} else {
+							y2 = (int) map.getMapUtils().getTileNumberY(z, latlonRect.left, latlonRect.top);
+							y1 = (int) map.getMapUtils().getTileNumberY(z, latlonRect.right, latlonRect.bottom);
+						}
 						for (int x = x1; x <= x2 && !cancel; x++) {
 							for (int y = y1; y <= y2 && !cancel; y++) {
 								String tileId = rm.calculateTileId(map, x, y, z);
@@ -221,14 +231,18 @@ public class DownloadTilesDialog {
 	}
 
 
-	private void updateLabel(final int zoom, final QuadRect latlonRect, final TextView downloadText, final String template, int progress) {
+	private void updateLabel(final int zoom, final QuadRect latlonRect, final TextView downloadText, final String template, int progress, ITileSource map) {
 		int numberTiles = 0;
 		for (int z = zoom; z <= progress + zoom; z++) {
-			int x1 = (int) MapUtils.getTileNumberX(z, latlonRect.left);
-			int x2 = (int) MapUtils.getTileNumberX(z, latlonRect.right);
-			int y1 = (int) MapUtils.getTileNumberY(z, latlonRect.top);
-			int y2 = (int) MapUtils.getTileNumberY(z, latlonRect.bottom);
-			numberTiles += (x2 - x1 + 1) * (y2 - y1 + 1);
+			int x1 = (int) mapView.mapUtils.getTileNumberX(z, latlonRect.left, latlonRect.top);
+			int x2 = (int) mapView.mapUtils.getTileNumberX(z, latlonRect.right, latlonRect.bottom);
+			int y1 = (int) mapView.mapUtils.getTileNumberY(z, latlonRect.left, latlonRect.top);
+			int y2 = (int) mapView.mapUtils.getTileNumberY(z, latlonRect.right, latlonRect.bottom);
+			if (map.getMapUtils().getVIndexOrder() > 0) {
+				numberTiles += (x2 - x1 + 1) * (y2 - y1 + 1);
+			} else {
+				numberTiles += (x2 - x1 + 1) * (y1 - y2 + 1);
+			}
 		}
 		downloadText.setText(MessageFormat.format(template, (progress + zoom)+"", //$NON-NLS-1$ 
 				numberTiles, (double)numberTiles*12/1000));

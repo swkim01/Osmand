@@ -40,4 +40,21 @@
         android:layout_weight="1"
         style="@style/OsmandListView"></ListView>
 
+    <LinearLayout
+        android:id="@+id/LinearLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="5dp"
+        android:layout_marginBottom="5dp"
+        android:gravity="left|bottom" >
+
+        <Button
+            android:id="@+id/SiteButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="120dp"
+            android:text="@string/search_site_googlemap" >
+        </Button>
+    </LinearLayout>
+
 </LinearLayout>
