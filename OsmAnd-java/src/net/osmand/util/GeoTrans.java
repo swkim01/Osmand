@@ -24,6 +24,7 @@ public class GeoTrans {
 	private static double[] dst_m = new double[5];
 
 	private static double EPSLN = 0.0000000001;
+        private static double n = 0.00000484813681109536;
 	private static double[] m_arMajor = new double[5];
 	private static double[] m_arMinor = new double[5];
 
@@ -33,7 +34,9 @@ public class GeoTrans {
 	private static double[] m_arFalseNorthing = new double[5];
 	private static double[] m_arFalseEasting = new double[5];
 	
-	private static double[] datum_params = new double[3];
+	private static double[] datum_params = new double[7];
+	private static double[] fromBesselToGRS80 = new double[3];
+	private static double[] fromGRS80ToBessel = new double[3];
 	
 	static {
 		m_arScaleFactor[GEO] = 1;
@@ -80,9 +83,31 @@ public class GeoTrans {
 		m_arMajor[UTMK] = 6378137.;
 		m_arMinor[UTMK] = 6356752.3141403558;
 		
-		datum_params[0] = -146.43;
-		datum_params[1] = 507.89;
-		datum_params[2] = 681.46;
+		// 3 parameters
+		// datum_params[0] = -146.43;
+		// datum_params[1] = 507.89;
+		// datum_params[2] = 681.46;
+		// 7 parameters
+		datum_params[0] = -145.907;
+		datum_params[1] = 505.034;
+		datum_params[2] = 685.756;
+		datum_params[3] = -1.162;
+		datum_params[4] = 2.347;
+		datum_params[5] = 1.592;
+		datum_params[6] = 6.342;
+		// if(datum_params&&datum_params.length>3){
+		datum_params[3] *= n;
+		datum_params[4] *= n;
+		datum_params[5] *= n;
+		datum_params[6] = (datum_params[6]/1000000)+1;
+		// }
+
+		fromBesselToGRS80[0] = -3159521.31;
+		fromBesselToGRS80[1] = 4068151.32;
+		fromBesselToGRS80[2] = 3748113.85;
+		fromGRS80ToBessel[0] = -3159666.86;
+		fromGRS80ToBessel[0] = 4068655.7;
+		fromGRS80ToBessel[0] = 3748799.65;
 
 		double tmp = m_arMinor[GEO] / m_arMajor[GEO];
 		m_Es[GEO] = 1.0 - tmp * tmp;
@@ -550,9 +575,25 @@ public class GeoTrans {
 	  {
 	    // if( x[io] == HUGE_VAL )
 	    //    continue;
-	    p.x += datum_params[0];
-	    p.y += datum_params[1];
-	    p.z += datum_params[2];
+	    // 3 parameters
+	    //p.x += datum_params[0];
+	    //p.y += datum_params[1];
+	    //p.z += datum_params[2];
+
+	    // 7 parameters
+	    double p0 = datum_params[0];
+	    double p1 = datum_params[1];
+	    double p2 = datum_params[2];
+	    double p3 = datum_params[3];
+	    double p4 = datum_params[4];
+	    double p5 = datum_params[5];
+	    double p6 = datum_params[6];
+	    double x1 = p.x - fromBesselToGRS80[0];
+	    double y1 = p.y - fromBesselToGRS80[1];
+	    double z1 = p.z - fromBesselToGRS80[2];
+	    p.x = p6 * (x1 + y1 * p5 - z1 * p4) + fromBesselToGRS80[0] + p0;
+	    p.y = p6 * ( - x1 * p5 + y1 + z1 * p3) + fromBesselToGRS80[1] + p1;
+	    p.z = p6 * (x1 * p4 - y1 * p3 + z1) + fromBesselToGRS80[2] + p2;
 	  }
 	} // geocentric_to_wgs84
 
@@ -566,10 +607,26 @@ public class GeoTrans {
 	  {
 	    //if( x[io] == HUGE_VAL )
 	    //    continue;
-	    p.x -= datum_params[0];
-	    p.y -= datum_params[1];
-	    p.z -= datum_params[2];
 
+	    // 3 parameters
+	    //p.x -= datum_params[0];
+	    //p.y -= datum_params[1];
+	    //p.z -= datum_params[2];
+
+	    // 7 parameters
+	    double p0 = datum_params[0];
+	    double p1 = datum_params[1];
+	    double p2 = datum_params[2];
+	    double p3 = datum_params[3];
+	    double p4 = datum_params[4];
+	    double p5 = datum_params[5];
+	    double pi6 = Math.pow(datum_params[6], -1);
+	    double x1 = p.x - fromGRS80ToBessel[0] - p0;
+	    double y1 = p.y - fromGRS80ToBessel[1] - p1;
+	    double z1 = p.z - fromGRS80ToBessel[2] - p2;
+	    p.x = pi6 * (x1 - y1 * p5 + z1 * p4) + fromGRS80ToBessel[0];
+	    p.y = pi6 * (x1 * p5 + y1 - z1 * p3) + fromGRS80ToBessel[1];
+	    p.z = pi6 * ( - x1 * p4 + y1 * p3 + z1) + fromGRS80ToBessel[2];
 	  }
 	} //geocentric_from_wgs84()
 

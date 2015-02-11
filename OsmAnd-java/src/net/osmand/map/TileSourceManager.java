@@ -27,6 +27,7 @@ import net.osmand.util.ForestOnMapUtils;
 import net.osmand.util.Gcj09MapUtils;
 import net.osmand.util.MapUtils;
 import net.osmand.util.NaverMapUtils;
+import net.osmand.util.SogouMapUtils;
 import net.osmand.util.YahooMapUtils;
 
 import org.apache.commons.logging.Log;
@@ -47,7 +48,8 @@ public class TileSourceManager {
 	private static final String RULE_NAVER = "naver";
 	private static final String RULE_FORESTON = "foreston";
 	private static final String RULE_GCJ09 = "gcj09";
-        private static final String RULE_BAIDU = "baidu";
+	private static final String RULE_BAIDU = "baidu";
+	private static final String RULE_SOGOU = "sogou";
 
 	public static MapUtils[] mapUtilsList = {new MapUtils(), new YahooMapUtils(), new DaumMapUtils(), new NaverMapUtils(), new ForestOnMapUtils(), new Gcj09MapUtils(), new Bd02MapUtils()};
 
@@ -502,6 +504,8 @@ return createTileSourceTemplates(new FileInputStream(customTiles));
 			template = createGcj09TileSourceTemplate(attrs, true);
 		} else if (RULE_BAIDU.equalsIgnoreCase(rule)) {
 			template = createBaiduTileSourceTemplate(attrs, true);
+		} else if (RULE_SOGOU.equalsIgnoreCase(rule)) {
+			template = createSogouTileSourceTemplate(attrs, true);
 		} else {
 			return null;
 		}
@@ -868,5 +872,56 @@ return createTileSourceTemplates(new FileInputStream(customTiles));
 			return MessageFormat.format(urlToLoad, zoom+1+"", x+"", y+""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		}
 	}
+
+	private static TileSourceTemplate createSogouTileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+		String name = attributes.get("name");
+		String urlTemplate = attributes.get("url_template");
+		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
+			return null;
+		}
+		if(urlTemplate != null){
+			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		}
+		int maxZoom = parseInt(attributes, "max_zoom", 18);
+		int minZoom = parseInt(attributes, "min_zoom", 5);
+		int tileSize = parseInt(attributes, "tile_size", 256);
+		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
+		int bitDensity = parseInt(attributes, "img_density", 16);
+		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
+		TileSourceTemplate templ = new SogouTileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		templ.setMapUtil(7);
+		return templ;
+	}
+	
+	public static class SogouTileSourceTemplate extends TileSourceTemplate {
+		
+		public SogouTileSourceTemplate(String name, String urlToLoad, String ext,
+				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
+		}
+
+		static int areaid = 0;
+		static int rmpid = 174;
+		static int[] zoomIds = {728, 727, 726, 725, 724, 723, 722, 721, 720, 719, 718, 717, 716, 715, 714, 713, 712, 711, 792};
+		
+		@Override
+		public String getUrlToLoad(int x, int y, int zoom) {
+			if(urlToLoad == null){
+				return null;
+			}
+			String x1;
+			if (x >= 0) x1 = Integer.toString((int)Math.floor(x/200));
+			else x1 = "M" + Math.abs((int)Math.floor(x/200));
+			String y1;
+			if (y >= 0) y1 = Integer.toString((int)Math.floor(y/200));
+			else y1 = "M" + Math.abs((int)Math.floor(y/200));
+			return MessageFormat.format(urlToLoad,
+				zoomIds[zoom]+"",
+				x1 + "/" + y1 + "/" +
+				(x >= 0 ? x : ("M" + Math.abs(x))),
+				(y >= 0 ? y : ("M" + Math.abs(y)))+""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		}
+	}
+	
 	
 }

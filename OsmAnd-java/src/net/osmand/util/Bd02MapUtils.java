@@ -2,9 +2,8 @@ package net.osmand.util;
 
 /**
  * This utility class includes : 
- * 1. distance algorithms
- * 2. finding center for array of nodes
- * 3. tile evaluation algorithms
+ * 1. finding center for array of nodes
+ * 2. tile evaluation algorithms
  * 
  *  Original from http://blog.csdn.net/coolypf/article/details/8569813
  *
