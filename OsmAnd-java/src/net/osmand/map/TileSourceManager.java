@@ -51,7 +51,7 @@ public class TileSourceManager {
 	private static final String RULE_BAIDU = "baidu";
 	private static final String RULE_SOGOU = "sogou";
 
-	public static MapUtils[] mapUtilsList = {new MapUtils(), new YahooMapUtils(), new DaumMapUtils(), new NaverMapUtils(), new ForestOnMapUtils(), new Gcj09MapUtils(), new Bd02MapUtils()};
+	public static MapUtils[] mapUtilsList = {new MapUtils(), new YahooMapUtils(), new DaumMapUtils(), new NaverMapUtils(), new ForestOnMapUtils(), new Gcj09MapUtils(), new Bd02MapUtils(), new SogouMapUtils()};
 
 	public static class TileSourceTemplate implements ITileSource, Cloneable {
 		private int maxZoom;
