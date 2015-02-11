@@ -276,9 +276,12 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 			protected List<TileSourceTemplate> doInBackground(Void... params) {
 				File tPath = app.getAppPath(IndexConstants.TILES_INDEX_DIR);
 				List<TileSourceTemplate> availableSourceTemplates = TileSourceManager.getLocalTileSourceTemplates(tPath);
-                                availableSourceTemplates.addAll(TileSourceManager.downloadTileSourceTemplates(Version.getVersionAsURLParam(app)));
-                                return availableSourceTemplates;
-				//return TileSourceManager.downloadTileSourceTemplates(Version.getVersionAsURLParam(app));
+				if (availableSourceTemplates != null) {
+					availableSourceTemplates.addAll(TileSourceManager.downloadTileSourceTemplates(Version.getVersionAsURLParam(app)));
+					return availableSourceTemplates;
+				} else {
+					return TileSourceManager.downloadTileSourceTemplates(Version.getVersionAsURLParam(app));
+				}
 			}
 			protected void onPostExecute(final java.util.List<TileSourceTemplate> downloaded) {
 				if (downloaded == null || downloaded.isEmpty()) {
