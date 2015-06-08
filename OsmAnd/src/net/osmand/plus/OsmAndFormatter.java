@@ -1,13 +1,13 @@
 package net.osmand.plus;
 
-import java.lang.reflect.Field;
 import java.text.DecimalFormat;
 import java.text.MessageFormat;
 import java.util.Map.Entry;
 
 import net.osmand.data.Amenity;
-import net.osmand.data.AmenityType;
 import net.osmand.data.City.CityType;
+import net.osmand.osm.PoiCategory;
+import net.osmand.osm.PoiType;
 import net.osmand.plus.OsmandSettings.MetricsConstants;
 import net.osmand.util.Algorithms;
 import android.content.Context;
@@ -43,12 +43,15 @@ public class OsmAndFormatter {
 		int generator = 1;
 		byte pointer = 1;
 		double point = mainUnitInMeter;
+		double roundDist = 1;
 		while (distInMeters * point > generator) {
+			roundDist = (generator / point);
 			if (pointer++ % 3 == 2) {
 				generator = generator * 5 / 2;
 			} else {
 				generator *= 2;
 			}
+			
 			if (point == mainUnitInMeter && metersInSecondUnit * mainUnitInMeter * 0.9f <= generator) {
 				point = 1 / metersInSecondUnit;
 				generator = 1;
@@ -56,7 +59,7 @@ public class OsmAndFormatter {
 			}
 		}
 
-		return (generator / point);
+		return roundDist;
 	}
 	
 	public static String getFormattedRoundDistanceKm(float meters, int digits, OsmandApplication ctx) {
@@ -87,9 +90,9 @@ public class OsmAndFormatter {
 		if (meters >= 100 * mainUnitInMeters) {
 			return (int) (meters / mainUnitInMeters + 0.5) + " " + ctx.getString(mainUnitStr); //$NON-NLS-1$
 		} else if (meters > 9.99f * mainUnitInMeters) {
-			return MessageFormat.format("{0,number,#.#} " + ctx.getString(mainUnitStr), ((float) meters) / mainUnitInMeters); //$NON-NLS-1$
+			return MessageFormat.format("{0,number,#.#} " + ctx.getString(mainUnitStr), ((float) meters) / mainUnitInMeters).replace('\n', ' '); //$NON-NLS-1$
 		} else if (meters > 0.999f * mainUnitInMeters) {
-			return MessageFormat.format("{0,number,#.##} " + ctx.getString(mainUnitStr), ((float) meters) / mainUnitInMeters); //$NON-NLS-1$
+			return MessageFormat.format("{0,number,#.##} " + ctx.getString(mainUnitStr), ((float) meters) / mainUnitInMeters).replace('\n', ' '); //$NON-NLS-1$
 		} else {
 			if (mc == MetricsConstants.KILOMETERS_AND_METERS) {
 				return ((int) (meters + 0.5)) + " " + ctx.getString(R.string.m); //$NON-NLS-1$
@@ -157,35 +160,17 @@ public class OsmAndFormatter {
 		return "";
 	}
 
-	public static String toPublicString(AmenityType t, Context ctx) {
-		Class<?> cl = R.string.class;
-		try {
-			Field fld = cl.getField("amenity_type_"+t.getCategoryName());
-			if(fld != null) {
-				return ctx.getString((Integer)fld.get(null));
-			}
-		} catch (Exception e) {
+	public static String getPoiStringWithoutType(Amenity amenity, String locale) {
+		PoiCategory pc = amenity.getType();
+		PoiType pt = pc.getPoiTypeByKeyName(amenity.getSubType());
+		String nm = amenity.getSubType();
+		if (pt != null) {
+			nm = pt.getTranslation();
+		} else if(nm != null){
+			nm = Algorithms.capitalizeFirstLetterAndLowercase(nm.replace('_', ' '));
 		}
-		return ctx.getString(R.string.amenity_type_user_defined);
-	}
-
-	
-	public static String getPoiSimpleFormat(Amenity amenity, Context ctx, boolean en) {
-		return getPoiStringWithoutType(amenity, en,
-				toPublicString(amenity.getType(), ctx) + ": " + amenity.getSubType()); //$NON-NLS-1$
-	}
-	
-	public static String getPoiStringWithoutType(Amenity amenity, boolean en) {
-		return getPoiStringWithoutType(amenity, en, amenity.getSubType());
-	}
-	
-	public static String getPoiStringWithoutType(Amenity amenity, boolean en, String defName) {
-		String nm = SpecialPhrases.getSpecialPhrase(amenity.getSubType(), defName);
-		String type = 
-				SpecialPhrases.getSpecialPhrase(amenity.getType().getCategoryName() + "_" + amenity.getSubType(),
-				nm);
-		String n = amenity.getName(en);
-		if (n.indexOf(type) != -1) {
+		String n = amenity.getName(locale);
+		if (n.indexOf(nm) != -1) {
 			// type is contained in name e.g.
 			// n = "Bakery the Corner"
 			// type = "Bakery"
@@ -193,9 +178,9 @@ public class OsmAndFormatter {
 			return n;
 		}
 		if (n.length() == 0) {
-			return type;
+			return nm;
 		}
-		return type + " " + n; //$NON-NLS-1$
+		return nm + " " + n; //$NON-NLS-1$
 	}
 
 	public static String getAmenityDescriptionContent(Context ctx, Amenity amenity, boolean shortDescription) {
@@ -203,8 +188,10 @@ public class OsmAndFormatter {
 		for(Entry<String, String>  e : amenity.getAdditionalInfo().entrySet()) {
 			String key = e.getKey();
 			String vl = e.getValue();
-			if(Amenity.DESCRIPTION.equals(key)) {
-				if(amenity.getType() == AmenityType.OSMWIKI && shortDescription) {
+			if(key.startsWith("name:")) {
+				continue;
+			} else if(vl.length() >= 150) {
+				if(shortDescription) {
 					continue;
 				}
 			} else if(Amenity.OPENING_HOURS.equals(key)) {
@@ -212,17 +199,19 @@ public class OsmAndFormatter {
 			} else if(Amenity.PHONE.equals(key)) {
 				d.append(ctx.getString(R.string.phone) + ": ");
 			} else if(Amenity.WEBSITE.equals(key)) {
-				if(amenity.getType() == AmenityType.OSMWIKI) {
+				if(amenity.getType().isWiki()) {
 					continue;
 				}
 				d.append(ctx.getString(R.string.website) + ": ");
 			} else {
-				vl = SpecialPhrases.getSpecialPhrase(e.getKey() + "_" + e.getValue(), null);
-				if(vl == null){
-					vl = SpecialPhrases.getSpecialPhrase(e.getKey(), 
-							Algorithms.capitalizeFirstLetterAndLowercase(e.getKey())) + ": ";
-					vl += SpecialPhrases.getSpecialPhrase(e.getValue(), e.getValue());
+				PoiCategory pc = amenity.getType();
+				PoiType pt = pc.getPoiTypeByKeyName(e.getKey());
+				if (pt != null) {
+					vl = pt.getTranslation();
+				} else {
+					vl = Algorithms.capitalizeFirstLetterAndLowercase(e.getKey());
 				}
+				vl += ": " + e.getValue();
 			}
 			d.append(vl).append('\n');
 		}

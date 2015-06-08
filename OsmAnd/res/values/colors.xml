@@ -1,34 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="actionbar_color">#ff8f00</color>
-	<color name="dashboard_descr_colol">#727272</color>
+
+	<color name="osmand_orange">#ff8f00</color>
+	<color name="app_mode_icon_color">#33B4E4</color>
+	<color name="recording_color">#F44336</color>
+
+	<color name="dash_search_icon_light">#536DFE</color>
+	<color name="dash_search_icon_dark">#606E78</color>
+
+	<color name="parking_outdated_color">#f41a34</color>
+	<color name="osmo_header_dark">#2d383d</color>
+	<color name="osmo_header_light">#b36d12</color>
+
+	<color name="dashboard_parking_light_selected">#007888</color>
+	<color name="dashboard_parking_light_color">#009688</color>
+	<color name="dashboard_parking_dark_color">#54778c</color>
+	<color name="dashboard_parking_dark_selected">#446072</color>
+	
+	<color name="plugin_details_install_header_bg_light">#dbdbdb</color>
+	<color name="plugin_details_install_header_bg_dark">#2d3438</color>
+	
+	<color name="list_divider_dark">#1f2326</color>
+	<color name="list_divider_light">@color/color_white</color>
+	<color name="list_sub_menu_background_dark">#475259</color>
+	<!-- <color name="list_item_light">@color/color_white</color> 
+	<color name="list_item_background_dark">#333b40</color> -->
+	<color name="list_item_light">#00000000</color> 
+	<color name="list_item_dark">#00000000</color>
+	<color name="list_item_light_pressed">#8cd0d0d0</color>
+	<color name="list_item_dark_pressed">#be39464d</color>
+	<color name="bg_color_light">#ffffff</color>
+	<color name="bg_color_dark">#333b40</color>
+	
+	
+	<color name="map_widget_icon_color">#ff8f00</color>
+	<color name="map_widget_stroke">#4C000000</color>
+	<color name="map_widget_light">#ffffff</color>
+	<color name="map_widget_dark">#a0000000</color>
+	<color name="map_widget_dark_stroke">#80ffffff</color>
+	<color name="map_widget_dark_pressed">#80aaaaaa</color>
+	<color name="map_widget_light_trans">#80ffffff</color>
+	<color name="map_widget_light_pressed">#e5e5e5</color>
+	<color name="map_widget_blue">#536dfe</color>
+	<color name="map_widget_blue_pressed">#485dd9</color>
+
+
+	<color name="actionbar_dark_color">#39464d</color>
+	<color name="tool_bar_color_dark">#CC080B0D</color>
+	<color name="actionbar_light_color">#ff8f00</color>
+	<color name="tool_bar_color_light">#b4ff8f00</color>
+	
+	<color name="download_pressed_light">#8cff8f00</color>
+	<color name="download_pressed_dark">#be39464d</color>
+
+    <color name="search_background_dark">#292f33</color>
+
+	<color name="icon_color_light">#727272</color>
+
+	<color name="dashboard_gpx_on_map">#448AFF</color>
 	<color name="dashboard_background">#eaeaea</color>
-	<color name="dashboard_divider">#f0f0f0</color>
+	<color name="dashboard_divider_light">#F0F0F0</color>
+	<color name="dashboard_divider_dark">#3d474c</color>
 	<color name="dashboard_black">#212121</color>
 	<color name="dashboard_blue">#536DFE</color>
-    <color name="gpx_color_point">#cd2c33</color>
-    <color name="gpx_speed">#c79c00</color>
-    <color name="gpx_altitude_desc">#32CD32</color>
-    <color name="gpx_altitude_asc">#EE3232</color>
-    <color name="gpx_distance_color">#ffa500</color>
-    <color name="gpx_time_span_color">#0080FF</color>
+	<color name="dashboard_subheader_text_dark">#b4c3cc</color>
+	<color name="dashboard_subheader_text_light">#212121</color>
+	<color name="dashboard_general_button_text_dark">#ff8f00</color>
+	<color name="dashboard_general_button_text_light">#536DFE</color>
 
 
 	<color name="color_transparent">#00000000</color>
-    <color name="color_favorite">#eecc22</color>
+	<color name="widgettext_night">#ffC8C8C8</color>
+	<!-- widgettext_shadow_night is the same as widget background color for non-transparent night skin (from box_night_free_simple.9.png) -->
+	<color name="widgettext_shadow_night">#dc262626</color>
+
 	<!-- style colors  -->
 	<color name="group_background">#A5A5A5</color>
+	<color name="background_tab_pressed">#1AFFFFFF</color>
 	<!-- <color name="activity_background">#666666</color>  -->
 
 	<!-- Distance to object suitable for all themes -->
 	<color name="color_distance">#FD9822</color>
-
+	
+	<color name="color_myloc_distance">#0080FF</color>
+	<color name="wpt_distance_color">#dd6CB336</color>
 	<!-- Old dialogs colors -->
 	<color name="color_white">#FFFFFF</color>
 	<color name="color_black">#000000</color>
 	
 	<color name="row_selection_color">#CC33BBE0</color>
 	
+	<!-- GPX analysis colors -->
+	<color name="gpx_color_point">#cd2c33</color>
+	<color name="gpx_speed">#c79c00</color>
+	<color name="gpx_altitude_desc">#32CD32</color>
+	<color name="gpx_altitude_asc">#EE3232</color>
+	<color name="gpx_distance_color">#ffa500</color>
+	<color name="gpx_time_span_color">#0080FF</color>
+
+	<color name="color_favorite">#eecc22</color>
+
 	<!-- Themed color list items -->
 	<!-- invalid -red, localindex not supported,  -->
 	<color name="color_invalid">#EE3232</color>
@@ -38,6 +109,8 @@
 	<color name="color_unknown">#C8C8C8</color>
 	<!-- good state, localindex loaded, poi_open, osm_create, index_ok   -->
 	<color name="color_ok">#32CD32</color>
+	<!-- intermediate state - poi is going to be closed -->
+	<color name="color_intermediate">#FFDD00</color>
 	<!-- update good state, osm_modify, index_update -->
 	<color name="color_update">#0080FF</color>
 	
@@ -50,7 +123,6 @@
 
 	<color name="gpx_track">#B4B319FF</color>
 	<color name="gpx_track_fluorescent">#B400FFFF</color>
-	<!-- <color name="gpx_track_fluorescent">#B4FF00FF</color>  Magenta is alternate track color for cyan but less contrast in many situations:  -->
 
 	<color name="nav_track">#CCaa0088</color>
 	<color name="nav_track_fluorescent">#CC00ddff</color>
@@ -70,11 +142,13 @@
 	<color name="osmbug_closed">#C800FF00</color> <!-- standard GREEN -->
 	<color name="osmbug_not_submitted">#C8FFFF00</color> <!-- standard YELLOW -->
 
-	<color name="distance_color">#dd6CB336</color>
+	
 	<color name="shadow_color">#33888888</color>
+	
 	<color name="sherpafy_selection">#ff33b5e5</color>
 	<color name="sherpafy_add_text">#b9b9b9</color>
 
-    <color name="dark_drawer_bg_color">#303030</color>
-	
+	<color name="spinner_list_background_light">#eeeeee</color>
+	<color name="spinner_list_background_dark">#303030</color>
+
 </resources>

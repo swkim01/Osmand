@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import net.osmand.Location;
 import net.osmand.TspAnt;
 import net.osmand.access.AccessibleAlertBuilder;
 import net.osmand.data.LatLon;
@@ -14,7 +15,6 @@ import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.R;
 import net.osmand.plus.TargetPointsHelper;
 import net.osmand.plus.TargetPointsHelper.TargetPoint;
-import net.osmand.plus.helpers.WaypointDialogHelper;
 import net.osmand.util.MapUtils;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -90,7 +90,7 @@ public class IntermediatePointsDialog {
 		builder.setView(contentView);
 		builder.setInverseBackgroundForced(true);
 		lv.setBackgroundColor(Color.WHITE);
-		builder.setPositiveButton(R.string.default_buttons_ok, new DialogInterface.OnClickListener() {
+		builder.setPositiveButton(R.string.shared_string_ok, new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
 				if(changeOrder) {
@@ -140,11 +140,21 @@ public class IntermediatePointsDialog {
 							};
 
 							protected int[] doInBackground(Void[] params) {
+								OsmandApplication app = (OsmandApplication) activity.getApplication();
+								Location cll = app.getLocationProvider().getLastKnownLocation();
 								ArrayList<TargetPoint> lt = new ArrayList<TargetPoint>(intermediates);
 								TargetPoint start ;
-								if(activity instanceof MapActivity) {
-									LatLon ll = new LatLon(((MapActivity) activity).getMapView().getLatitude(), ((MapActivity) activity).getMapView().getLongitude());
-									start = TargetPoint.create(ll, "");
+								
+								if(cll != null) {
+									LatLon ll = new LatLon(cll.getLatitude(), cll.getLongitude());
+									start = TargetPoint.create(ll, null);
+								} else if(app.getTargetPointsHelper().getPointToStart() != null) {
+									TargetPoint ps = app.getTargetPointsHelper().getPointToStart();
+									LatLon ll = new LatLon(ps.getLatitude(), ps.getLongitude());
+									start = TargetPoint.create(ll, null);
+//								} else if(activity instanceof MapActivity) {
+//									LatLon ll = new LatLon(((MapActivity) activity).getMapView().getLatitude(), ((MapActivity) activity).getMapView().getLongitude());
+//									start = TargetPoint.create(ll, null);
 								} else {
 									start = lt.get(0);
 								}
@@ -210,7 +220,7 @@ public class IntermediatePointsDialog {
 				} else {
 					nm += app.getString(R.string.destination_point, distString);
 				}
-				String descr = tp.name;
+				String descr = tp.getOnlyName();
 				if(descr != null && descr.trim().length() > 0) {
 					nm += "\n" + descr;
 				}
@@ -241,9 +251,9 @@ public class IntermediatePointsDialog {
 						}
 					});
 				} else {
-					tv.setCompoundDrawablesWithIntrinsicBounds(
-							position == intermediates.size() - 1? R.drawable.list_destination:
-								R.drawable.list_intermediate, 0, 0, 0);
+					int icon = position == intermediates.size() - 1? R.drawable.ic_action_target:
+						R.drawable.ic_action_intermediate;
+					tv.setCompoundDrawablesWithIntrinsicBounds(app.getIconsCache().getContentIcon(icon), null, null, null);
 					tv.setCompoundDrawablePadding(padding);
 					final CheckBox ch = ((CheckBox) v.findViewById(R.id.check_item));
 					ch.setVisibility(View.VISIBLE);

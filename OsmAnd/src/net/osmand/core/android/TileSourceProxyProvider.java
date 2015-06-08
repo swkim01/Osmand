@@ -1,16 +1,25 @@
 package net.osmand.core.android;
 
+import android.graphics.Bitmap;
+
 import java.io.IOException;
 
 import net.osmand.IndexConstants;
 import net.osmand.core.jni.AlphaChannelPresence;
+import net.osmand.core.jni.IMapDataProvider;
+import net.osmand.core.jni.MapStubStyle;
 import net.osmand.core.jni.SWIGTYPE_p_QByteArray;
 import net.osmand.core.jni.SwigUtilities;
 import net.osmand.core.jni.TileId;
 import net.osmand.core.jni.ZoomLevel;
 import net.osmand.core.jni.interface_ImageMapLayerProvider;
+import net.osmand.core.jni.IMapTiledDataProvider;
+import net.osmand.core.jni.ImageMapLayerProvider;
 import net.osmand.map.ITileSource;
+import net.osmand.map.MapTileDownloader;
 import net.osmand.plus.OsmandApplication;
+import net.osmand.plus.resources.AsyncLoadingThread;
+import net.osmand.plus.resources.ResourceManager;
 
 public class TileSourceProxyProvider extends interface_ImageMapLayerProvider {
 
@@ -20,6 +29,11 @@ public class TileSourceProxyProvider extends interface_ImageMapLayerProvider {
 	public TileSourceProxyProvider(OsmandApplication app, ITileSource tileSource) {
 		this.app = app;
 		this.tileSource = tileSource;
+	}
+
+	@Override
+	public MapStubStyle getDesiredStubsStyle() {
+		return MapStubStyle.Unspecified;
 	}
 	
 	@Override
@@ -33,10 +47,36 @@ public class TileSourceProxyProvider extends interface_ImageMapLayerProvider {
 	}
 
 	@Override
-	public SWIGTYPE_p_QByteArray obtainImage(TileId tileId, ZoomLevel zoom) {
+	public boolean supportsNaturalObtainData() {
+		return true;
+	}
+
+	@Override
+	public SWIGTYPE_p_QByteArray obtainImage(IMapTiledDataProvider.Request request) {
 		byte[] image;
 		try {
-			image = tileSource.getBytes(tileId.getX(), tileId.getY(), zoom.swigValue(),
+			ResourceManager rm = app.getResourceManager();
+			String tileFilename = rm.calculateTileId(tileSource, request.getTileId().getX(), request.getTileId().getY(),
+					request.getZoom().swigValue());
+
+			final TileReadyCallback tileReadyCallback = new TileReadyCallback(tileSource,
+					request.getTileId().getX(), request.getTileId().getY(), request.getZoom().swigValue());
+			rm.getMapTileDownloader().addDownloaderCallback(tileReadyCallback);
+			while (rm.getTileImageForMapAsync(tileFilename, tileSource, request.getTileId().getX(), request.getTileId().getY(),
+					request.getZoom().swigValue(), true) == null) {
+				synchronized (tileReadyCallback.getSync()) {
+					if (tileReadyCallback.isReady()) {
+						break;
+					}
+					try {
+						tileReadyCallback.getSync().wait(250);
+					} catch (InterruptedException e) {
+					}
+				}
+			}
+			rm.getMapTileDownloader().removeDownloaderCallback(tileReadyCallback);
+
+			image = tileSource.getBytes(request.getTileId().getX(), request.getTileId().getY(), request.getZoom().swigValue(),
 					app.getAppPath(IndexConstants.TILES_INDEX_DIR).getAbsolutePath());
 		} catch(IOException e) {
 			return SwigUtilities.emptyQByteArray();
@@ -45,6 +85,17 @@ public class TileSourceProxyProvider extends interface_ImageMapLayerProvider {
 			return SwigUtilities.emptyQByteArray();
 
 		return SwigUtilities.createQByteArrayAsCopyOf(image);
+	}
+
+	@Override
+	public boolean supportsNaturalObtainDataAsync() {
+		return false;
+	}
+
+	@Override
+	public void obtainImageAsync(IMapTiledDataProvider.Request request, ImageMapLayerProvider.AsyncImage asyncImage) {
+		//TODO: Launch the request via manager and after image is ready (or error is ready)
+		// call asyncImage.submit()
 	}
 	
 	@Override
@@ -60,5 +111,50 @@ public class TileSourceProxyProvider extends interface_ImageMapLayerProvider {
 	@Override
 	public AlphaChannelPresence getAlphaChannelPresence() {
 		return AlphaChannelPresence.Unknown;
+	}
+
+	private static class TileReadyCallback implements MapTileDownloader.IMapDownloaderCallback {
+		private final ITileSource tileSource;
+		private final int x;
+		private final int y;
+		private final int zoom;
+		private boolean ready = false;
+		private final Object sync = new Object();
+
+		public TileReadyCallback(ITileSource tileSource, int x, int y, int zoom) {
+			this.tileSource = tileSource;
+			this.x = x;
+			this.y = y;
+			this.zoom = zoom;
+		}
+
+		public boolean isReady() {
+			return ready;
+		}
+
+		public Object getSync() {
+			return sync;
+		}
+
+		@Override
+		public void tileDownloaded(MapTileDownloader.DownloadRequest request) {
+			if (!(request instanceof AsyncLoadingThread.TileLoadDownloadRequest)) {
+				return;
+			}
+			AsyncLoadingThread.TileLoadDownloadRequest tileLoadRequest =
+					(AsyncLoadingThread.TileLoadDownloadRequest)request;
+
+			if (tileSource != tileLoadRequest.tileSource ||
+					x != tileLoadRequest.xTile ||
+					y != tileLoadRequest.yTile ||
+					zoom != tileLoadRequest.zoom) {
+				return;
+			}
+
+			synchronized (sync) {
+				ready = true;
+				sync.notifyAll();
+			}
+		}
 	}
 }

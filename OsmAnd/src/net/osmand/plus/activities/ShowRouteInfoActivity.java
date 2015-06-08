@@ -11,11 +11,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-import android.support.v4.view.MenuItemCompat;
-import android.view.*;
-import android.widget.*;
-import net.osmand.IndexConstants;
 import net.osmand.Location;
+import net.osmand.data.PointDescription;
 import net.osmand.plus.GPXUtilities;
 import net.osmand.plus.GPXUtilities.GPXFile;
 import net.osmand.plus.OsmAndFormatter;
@@ -31,8 +28,19 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.view.MenuItemCompat;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;
 
 
 /**
@@ -48,15 +56,28 @@ public class ShowRouteInfoActivity extends OsmandListActivity {
 	private TextView header;
 	private DisplayMetrics dm;
 
+	public static final String START_NAVIGATION = "START_NAVIGATION";
+
 	@Override
 	public void onCreate(Bundle icicle) {
 		super.onCreate(icicle);
-		ListView lv = new ListView(this);
-		lv.setId(android.R.id.list);
-		header = new TextView(this);
+		setContentView(R.layout.default_list_view);
+		ListView lv = (ListView) findViewById(android.R.id.list);
+		View headerView = getLayoutInflater().inflate(R.layout.route_details_header, null);
+		header = (TextView) headerView.findViewById(R.id.header);
 		helper = ((OsmandApplication)getApplication()).getRoutingHelper();
-		lv.addHeaderView(header);
-		setContentView(lv);
+		((ImageView)
+				headerView.findViewById(R.id.start_navigation)).setImageDrawable(
+						getMyApplication().getIconsCache().getIcon(R.drawable.ic_action_start_navigation, R.color.color_myloc_distance));
+		headerView.findViewById(R.id.start_navigation).setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				Intent i = new Intent(ShowRouteInfoActivity.this, MapActivity.class);
+				i.putExtra(START_NAVIGATION, START_NAVIGATION);
+				startActivity(i);
+			}
+		});
+		lv.addHeaderView(headerView);
 		dm = new DisplayMetrics();
 		getWindowManager().getDefaultDisplay().getMetrics(dm);
 
@@ -104,13 +125,13 @@ public class ShowRouteInfoActivity extends OsmandListActivity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		createMenuItem(menu, PRINT, R.string.print_route,
-				R.drawable.ic_action_gprint_light, R.drawable.ic_action_gprint_dark,
+				R.drawable.ic_action_gprint_dark,
 				MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
-		createMenuItem(menu, SAVE, R.string.save_route_as_gpx,
-				R.drawable.ic_action_gsave_light, R.drawable.ic_action_gsave_dark,
+		createMenuItem(menu, SAVE, R.string.shared_string_save_as_gpx,
+				R.drawable.ic_action_gsave_dark,
 				MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
 		createMenuItem(menu, SHARE, R.string.share_route_as_gpx,
-				R.drawable.ic_action_gshare_light, R.drawable.ic_action_gshare_dark,
+				R.drawable.ic_action_gshare_dark,
 				MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
 		return super.onCreateOptionsMenu(menu);
 	}
@@ -126,7 +147,9 @@ public class ShowRouteInfoActivity extends OsmandListActivity {
 			MapRouteInfoControl.directionInfo = position - 1;
 			OsmandSettings settings = ((OsmandApplication) getApplication()).getSettings();
 			settings.setMapLocationToShow(loc.getLatitude(),loc.getLongitude(),
-					Math.max(13, settings.getLastKnownMapZoom()), null, item.getDescriptionRoutePart() + " " + getTimeDescription(item), null);
+					Math.max(13, settings.getLastKnownMapZoom()), 
+					new PointDescription(PointDescription.POINT_TYPE_MARKER, item.getDescriptionRoutePart() + " " + getTimeDescription(item)),
+					false, null);
 			MapActivity.launchMapActivityMoveToTop(this);
 		}
 	}
@@ -286,9 +309,7 @@ public class ShowRouteInfoActivity extends OsmandListActivity {
 			html.append("</body>");
 			html.append("</html>");
 
-			file = new File(((OsmandApplication) getApplication())
-					.getAppCustomization().getExternalStorageDir(),
-					IndexConstants.APP_DIR + FILE_NAME);
+			file = ((OsmandApplication) getApplication()).getAppPath(FILE_NAME);
 			fos = new FileOutputStream(file);
 			fos.write(html.toString().getBytes("UTF-8"));
 			fos.flush();

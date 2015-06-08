@@ -1,26 +1,40 @@
 package net.osmand.plus.views;
 
+import net.osmand.plus.IconsCache;
+import net.osmand.plus.OsmandApplication;
+import net.osmand.plus.R;
 import android.content.Context;
-import android.graphics.*;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
-import net.osmand.plus.R;
 
 /**
- * Created by Denis on 10.12.2014.
+ * Created by Denis
+ * on 10.12.2014.
  */
 public class DirectionDrawable extends Drawable {
 	Paint paintRouteDirection;
 	float width;
 	float height;
 	Context ctx;
-	boolean favorite;
 	private float angle;
+	int resourceId = -1;
+	Drawable arrowImage ;
 
-
-	public DirectionDrawable(Context ctx, float width, float height, boolean favorite) {
-		this.favorite = favorite;
+	public DirectionDrawable(Context ctx, float width, float height, int resourceId, int clrId) {
+		this(ctx, width, height);
+		IconsCache iconsCache = ((OsmandApplication) ctx.getApplicationContext()).getIconsCache();
+		arrowImage = iconsCache.getIcon(resourceId, clrId);
+		this.resourceId = resourceId;
+	}
+	
+	public DirectionDrawable(Context ctx, float width, float height) {
 		this.ctx = ctx;
 		this.width = width;
 		this.height = height;
@@ -29,14 +43,29 @@ public class DirectionDrawable extends Drawable {
 		paintRouteDirection.setColor(ctx.getResources().getColor(R.color.color_unknown));
 		paintRouteDirection.setAntiAlias(true);
 	}
+	
+	public void setImage(int resourceId, int clrId) {
+		IconsCache iconsCache = ((OsmandApplication) ctx.getApplicationContext()).getIconsCache();
+		arrowImage = iconsCache.getIcon(resourceId, clrId);
+		this.resourceId = resourceId;
+		onBoundsChange(getBounds());
+	}
 
-	public void setOpenedColor(int opened) {
-		if (opened == 0) {
-			paintRouteDirection.setColor(ctx.getResources().getColor(R.color.color_ok));
-		} else if (opened == -1) {
-			paintRouteDirection.setColor(ctx.getResources().getColor(R.color.color_unknown));
+	public void setImage(int resourceId) {
+		IconsCache iconsCache = ((OsmandApplication) ctx.getApplicationContext()).getIconsCache();
+		arrowImage = iconsCache.getIcon(resourceId, 0);
+		this.resourceId = resourceId;
+		onBoundsChange(getBounds());
+	}
+	
+	
+	public void setColorId(int clrId) {
+		// R.color.color_ok, R.color.color_unknown, R.color.color_warning
+		if(arrowImage != null) {
+			IconsCache iconsCache = ((OsmandApplication) ctx.getApplicationContext()).getIconsCache();
+			arrowImage = iconsCache.getIcon(resourceId, clrId);
 		} else {
-			paintRouteDirection.setColor(ctx.getResources().getColor(R.color.color_warning));
+			paintRouteDirection.setColor(ctx.getResources().getColor(clrId));
 		}
 	}
 
@@ -44,18 +73,54 @@ public class DirectionDrawable extends Drawable {
 	public void setAngle(float angle) {
 		this.angle = angle;
 	}
+	
+
+	@Override
+	public int getIntrinsicWidth() {
+		if (arrowImage != null) {
+			return arrowImage.getIntrinsicWidth();
+		}
+		return super.getIntrinsicWidth();
+	}
+	
+	@Override
+	public int getIntrinsicHeight() {
+		if (arrowImage != null) {
+			return arrowImage.getIntrinsicHeight();
+		}
+		return super.getIntrinsicHeight();
+	}
+	
+	@Override
+	protected void onBoundsChange(Rect bounds) {
+		super.onBoundsChange(bounds);
+		if (arrowImage != null) {
+			Rect r = bounds;
+			int w = arrowImage.getIntrinsicWidth();
+			int h = arrowImage.getIntrinsicHeight();
+			int dx = Math.max(0, r.width() - w);
+			int dy = Math.max(0, r.height() - h);
+			if(r.width() == 0 && r.height() == 0) {
+				arrowImage.setBounds(0, 0, w, h);
+			} else {
+				arrowImage.setBounds(r.left + dx / 2, r.top + dy / 2, r.right - dx / 2, r.bottom - dy / 2);
+			}
+		}
+	}
 
 	@Override
 	public void draw(Canvas canvas) {
-		if (favorite) {
-			canvas.rotate(angle, canvas.getHeight()/2, canvas.getWidth()/2);
-			Bitmap arrow = BitmapFactory.decodeResource(ctx.getResources(), R.drawable.ic_destination_arrow);
-			canvas.drawBitmap(arrow, null, new Rect(0,0,arrow.getHeight(), arrow.getWidth()), null);
+		canvas.save();
+		if (arrowImage != null) {
+			Rect r = getBounds();
+			canvas.rotate(angle, r.centerX(), r.centerY());
+			arrowImage.draw(canvas);
 		} else {
-			canvas.rotate(angle, canvas.getHeight()/2, canvas.getWidth() / 2);
+			canvas.rotate(angle, canvas.getWidth() / 2, canvas.getHeight() / 2);
 			Path directionPath = createDirectionPath();
 			canvas.drawPath(directionPath, paintRouteDirection);
 		}
+		canvas.restore();
 	}
 
 	@Override
@@ -79,7 +144,7 @@ public class DirectionDrawable extends Drawable {
 		int w = 4;
 		float sarrowL = 8; // side of arrow
 		float harrowL = (float) Math.sqrt(2) * sarrowL; // hypotenuse of arrow
-		float hpartArrowL = (float) (harrowL - w) / 2;
+		float hpartArrowL = (harrowL - w) / 2;
 		Path path = new Path();
 		path.moveTo(width / 2, height - (height - h) / 3);
 		path.rMoveTo(w / 2, 0);

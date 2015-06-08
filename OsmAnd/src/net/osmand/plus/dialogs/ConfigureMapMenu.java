@@ -17,10 +17,17 @@ import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.OsmandSettings.CommonPreference;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.MapActivity;
+import net.osmand.plus.activities.PluginActivity;
 import net.osmand.plus.activities.SettingsActivity;
 import net.osmand.plus.activities.TransportRouteHelper;
+import net.osmand.plus.dashboard.DashboardOnMap.DashboardType;
 import net.osmand.plus.poi.PoiLegacyFilter;
+import net.osmand.plus.rastermaps.OsmandRasterMapsPlugin;
+import net.osmand.plus.render.RendererRegistry;
 import net.osmand.plus.views.OsmandMapTileView;
+import net.osmand.plus.views.corenative.NativeCoreContext;
+import gnu.trove.list.array.TIntArrayList;
+import net.osmand.core.android.MapRendererContext;
 import net.osmand.render.RenderingRuleProperty;
 import net.osmand.render.RenderingRuleStorageProperties;
 import net.osmand.render.RenderingRulesStorage;
@@ -28,8 +35,8 @@ import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.DialogInterface.OnMultiChoiceClickListener;
-import android.preference.PreferenceGroup;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
@@ -42,43 +49,28 @@ public class ConfigureMapMenu {
 
 	private boolean allModes = false;
 
-	public ContextMenuAdapter createListAdapter(final MapActivity ma, final boolean advanced) {
+	public ContextMenuAdapter createListAdapter(final MapActivity ma) {
 		ContextMenuAdapter adapter = new ContextMenuAdapter(ma, allModes);
 		adapter.setDefaultLayoutId(R.layout.drawer_list_item);
-		adapter.item(R.string.configure_map).icons(R.drawable.ic_back_drawer_dark, R.drawable.ic_back_drawer_white)
-				.listen(new OnContextMenuClick() {
-
-					@Override
-					public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
-						ma.getMapActions().onDrawerBack();
-						return false;
-					}
-				}).reg();
 		adapter.item(R.string.app_modes_choose).layout(R.layout.mode_toggles).reg();
 		adapter.setChangeAppModeListener(new OnClickListener() {
 			@Override
 			public void onClick(boolean result) {
 				allModes = true;
-				ma.getMapActions().prepareOptionsMenu(createListAdapter(ma, advanced));
+				ma.getDashboard().updateListAdapter(createListAdapter(ma));
 			}
 		});
-
 		createLayersItems(adapter, ma);
-		if (!advanced){
-			adapter.item(R.string.btn_advanced_mode).icons(R.drawable.ic_action_settings_dark, R.drawable.ic_action_settings_light)
-					.selected(advanced ? 1 : 0)
-					.listen(new OnContextMenuClick() {
-						@Override
-						public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
-							ma.getMapActions().prepareOptionsMenu(createListAdapter(ma, isChecked));
-							return false;
-						}
-					}).reg();
-		}
-
-		if (advanced) {
-			createRenderingAttributeItems(adapter, ma);
-		}
+		createRenderingAttributeItems(adapter, ma);
+		adapter.item(R.string.layer_map_appearance).
+			iconColor(R.drawable.ic_configure_screen_dark).listen(new OnContextMenuClick() {
+				@Override
+				public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
+					ma.getDashboard().setDashboardVisibility(true, DashboardType.CONFIGURE_SCREEN);
+					return false;
+				}
+			}).reg();
+		
 		return adapter;
 	}
 	
@@ -103,7 +95,7 @@ public class ConfigureMapMenu {
 		
 		@Override
 		public boolean onRowItemClick(ArrayAdapter<?> adapter, View view, int itemId, int pos) {
-			if(itemId == R.string.layer_poi && cm.getSelection(pos) == 1) {
+			if(itemId == R.string.layer_poi) {
 				selectPOILayer(ma.getMyApplication().getSettings());
 				return false;
 			} else if(itemId == R.string.layer_gpx_layer && cm.getSelection(pos) == 1) {
@@ -118,14 +110,13 @@ public class ConfigureMapMenu {
 		public boolean onContextMenuClick(final ArrayAdapter<?> adapter, int itemId, final int pos, boolean isChecked) {
 			final OsmandSettings settings = ma.getMyApplication().getSettings();
 			if (itemId == R.string.layer_poi) {
-				settings.SHOW_POI_OVER_MAP.set(isChecked);
+				settings.SELECTED_POI_FILTER_FOR_MAP.set(null);
 				if (isChecked) {
 					selectPOILayer(settings);
 				}
-				
 			} else if (itemId == R.string.layer_amenity_label) {
 				settings.SHOW_POI_LABEL.set(isChecked);
-			} else if (itemId == R.string.layer_favorites) {
+			} else if (itemId == R.string.shared_string_favorites) {
 				settings.SHOW_FAVORITES.set(isChecked);
 			} else if (itemId == R.string.layer_gpx_layer) {
 				if (ma.getMyApplication().getSelectedGpxHelper().isShowingAnyGpxFiles()) {
@@ -140,6 +131,14 @@ public class ConfigureMapMenu {
 						}
 					});
 				}
+			} else if (itemId == R.string.layer_map) {
+				if(OsmandPlugin.getEnabledPlugin(OsmandRasterMapsPlugin.class) == null) {
+					Intent intent = new Intent(ma, PluginActivity.class);
+					intent.putExtra(PluginActivity.EXTRA_PLUGIN_ID, OsmandRasterMapsPlugin.ID);
+					ma.startActivity(intent);
+				} else {
+					ma.getMapLayers().selectMapLayer(ma.getMapView());
+				}
 			} else if (itemId == R.string.layer_transport_route) {
 				ma.getMapLayers().getTransportInfoLayer().setVisible(isChecked);
 			}
@@ -149,16 +148,13 @@ public class ConfigureMapMenu {
 		}
 
 		protected void selectPOILayer(final OsmandSettings settings) {
-			final PoiLegacyFilter[] selected = new PoiLegacyFilter[1]; 
+			final PoiLegacyFilter[] selected = new PoiLegacyFilter[1];
 			AlertDialog dlg = ma.getMapLayers().selectPOIFilterLayer(ma.getMapView(), selected);
 			dlg.setOnDismissListener(new DialogInterface.OnDismissListener() {
-				
+
 				@Override
 				public void onDismiss(DialogInterface dialog) {
-					if(selected[0] == null) {		
-						settings.SHOW_POI_OVER_MAP.set(selected[0] != null);
-					}
-					ma.getMapActions().refreshDrawer();
+					ma.getDashboard().refreshContent(true);
 				}
 			});
 		}
@@ -168,22 +164,23 @@ public class ConfigureMapMenu {
 		OsmandApplication app = activity.getMyApplication();
 		OsmandSettings settings = app.getSettings();
 		LayerMenuListener l = new LayerMenuListener(activity, adapter);
-		adapter.item(R.string.layers_category_show).setCategory(true).layout(R.layout.drawer_list_sub_header).reg();
+		adapter.item(R.string.shared_string_show).setCategory(true).layout(R.layout.drawer_list_sub_header).reg();
 		// String appMode = " [" + settings.getApplicationMode().toHumanString(view.getApplication()) +"] ";
-		adapter.item(R.string.layer_poi).selected(settings.SHOW_POI_OVER_MAP.get() ? 1 : 0)
-				.icons(R.drawable.ic_action_info_dark, R.drawable.ic_action_info_light).listen(l).reg();
+		adapter.item(R.string.layer_poi).selected(settings.SELECTED_POI_FILTER_FOR_MAP.get() != null ? 1 : 0)
+				.iconColor(R.drawable.ic_action_info_dark).listen(l).reg();
 		adapter.item(R.string.layer_amenity_label).selected(settings.SHOW_POI_LABEL.get() ? 1 : 0)
-				.icons(R.drawable.ic_action_text_dark, R.drawable.ic_action_text_light).listen(l).reg();
-		adapter.item(R.string.layer_favorites).selected(settings.SHOW_FAVORITES.get() ? 1 : 0)
-				.icons(R.drawable.ic_action_fav_dark, R.drawable.ic_action_fav_light).listen(l).reg();
+				.iconColor(R.drawable.ic_action_text_dark).listen(l).reg();
+		adapter.item(R.string.shared_string_favorites).selected(settings.SHOW_FAVORITES.get() ? 1 : 0)
+				.iconColor(R.drawable.ic_action_fav_dark).listen(l).reg();
 		adapter.item(R.string.layer_gpx_layer).selected(
 				app.getSelectedGpxHelper().isShowingAnyGpxFiles() ? 1 : 0)
-//				.icons(R.drawable.ic_action_foot_dark, R.drawable.ic_action_foot_light)
-				.icons(R.drawable.ic_action_polygom_dark, R.drawable.ic_action_polygom_light)
+				.iconColor(R.drawable.ic_action_polygom_dark)
+				.listen(l).reg();
+		adapter.item(R.string.layer_map).iconColor(R.drawable.ic_world_globe_dark)
 				.listen(l).reg();
 		if(TransportRouteHelper.getInstance().routeIsCalculated()){
 			adapter.item(R.string.layer_transport_route).selected(1)
-				.icons(R.drawable.ic_action_bus_dark, R.drawable.ic_action_bus_light).listen(l).reg();
+				.iconColor(R.drawable.ic_action_bus_dark).listen(l).reg();
 		}
 		
 		OsmandPlugin.registerLayerContextMenu(activity.getMapView(), adapter, activity);
@@ -231,8 +228,8 @@ public class ConfigureMapMenu {
 							AccessibleToast.makeText(app, R.string.renderer_load_exception, Toast.LENGTH_SHORT).show();
 						}
 						adapter.setItemDescription(pos, getRenderDescr(activity));
+						activity.getDashboard().refreshContent(true);
 						dialog.dismiss();
-						activity.getMapActions().prepareOptionsMenu(createListAdapter(activity, true));
 					}
 
 				});
@@ -266,6 +263,56 @@ public class ConfigureMapMenu {
 				return false;
 			}
 		}).layout(R.layout.drawer_list_doubleitem).reg();
+
+		adapter.item(R.string.map_magnifier).listen(new OnContextMenuClick() {
+			@Override
+			public boolean onContextMenuClick(final ArrayAdapter<?> ad, int itemId, final int pos, boolean isChecked) {
+				final OsmandMapTileView view = activity.getMapView();
+				final OsmandSettings.OsmandPreference<Float> mapDensity = view.getSettings().MAP_DENSITY;
+				final AlertDialog.Builder bld = new AlertDialog.Builder(view.getContext());
+				int p = (int) (mapDensity.get() * 100);
+				final TIntArrayList tlist = new TIntArrayList(new int[] { 33, 50, 75, 100, 150, 200, 300, 400 });
+				final List<String> values = new ArrayList<String>();
+				int i = -1;
+				for (int k = 0; k <= tlist.size(); k++) {
+					final boolean end = k == tlist.size();
+					if (i == -1) {
+						if ((end || p < tlist.get(k))) {
+							values.add(p + " %");
+							i = k;
+						} else if (p == tlist.get(k)) {
+							i = k;
+						}
+					}
+					if (k < tlist.size()) {
+						values.add(tlist.get(k) + " %");
+					}
+				}
+				if (values.size() != tlist.size()) {
+					tlist.insert(i, p);
+				}
+
+				bld.setTitle(R.string.map_magnifier);
+				bld.setSingleChoiceItems(values.toArray(new String[values.size()]), i,
+						new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								int p = tlist.get(which);
+								mapDensity.set(p / 100.0f);
+								view.setComplexZoom(view.getZoom(), view.getSettingsMapDensity());
+								MapRendererContext mapContext = NativeCoreContext.getMapRendererContext();
+								if (mapContext != null) {
+									mapContext.updateMapSettings();
+								}
+								adapter.setItemDescription(pos, String.format("%.0f", 100f * activity.getMyApplication().getSettings().MAP_DENSITY.get()) + " %");
+								ad.notifyDataSetInvalidated();
+								dialog.dismiss();
+							}
+						});
+				bld.show();
+				return false;
+			}
+		}).description(String.format("%.0f", 100f * activity.getMyApplication().getSettings().MAP_DENSITY.get()) + " %").layout(R.layout.drawer_list_doubleitem).reg();
 
 		adapter.item(R.string.text_size).listen(new OnContextMenuClick() {
 			@Override
@@ -349,17 +396,19 @@ public class ConfigureMapMenu {
 		}
 	}
 	
-	static String[] mapNamesIds = new String[] { "", "en", "be", "ca", "cs", "da", "de", "el", "es", "fi", "fr", "he", "hi",
-			"hr", "hu", "it", "ja", "ko", "lv", "nl", "pl", "ro", "ru", "sk", "sl", "sv", "sw", "zh" };
+	static String[] mapNamesIds = new String[] { "", "en", "ar", "be", "ca", "cs", "da", "de", "el", "es", "fi", "fr", "he", "hi",
+			"hr", "hu", "it", "ja", "ko", "lt", "lv", "nl", "pl", "ro", "ru", "sk", "sl", "sv", "sw", "zh" };
 
 	private String[] getMapNamesValues(Context ctx) {
 		return new String[] { ctx.getString(R.string.local_map_names), ctx.getString(R.string.lang_en),
+				ctx.getString(R.string.lang_ar),
 				ctx.getString(R.string.lang_be), ctx.getString(R.string.lang_ca), ctx.getString(R.string.lang_cs),
 				ctx.getString(R.string.lang_da), ctx.getString(R.string.lang_de), ctx.getString(R.string.lang_el),
 				ctx.getString(R.string.lang_es), ctx.getString(R.string.lang_fi), ctx.getString(R.string.lang_fr),
 				ctx.getString(R.string.lang_he), ctx.getString(R.string.lang_hi), ctx.getString(R.string.lang_hr),
 				ctx.getString(R.string.lang_hu), ctx.getString(R.string.lang_it), ctx.getString(R.string.lang_ja),
-				ctx.getString(R.string.lang_ko), ctx.getString(R.string.lang_lv), ctx.getString(R.string.lang_nl),
+				ctx.getString(R.string.lang_ko), ctx.getString(R.string.lang_lt),
+				ctx.getString(R.string.lang_lv), ctx.getString(R.string.lang_nl),
 				ctx.getString(R.string.lang_pl), ctx.getString(R.string.lang_ro), ctx.getString(R.string.lang_ru),
 				ctx.getString(R.string.lang_sk), ctx.getString(R.string.lang_sl), ctx.getString(R.string.lang_sv),
 				ctx.getString(R.string.lang_sw), ctx.getString(R.string.lang_zh) };
@@ -399,13 +448,13 @@ public class ConfigureMapMenu {
 	protected String getDescription(final List<OsmandSettings.CommonPreference<Boolean>> prefs) {
 		int count = 0;
 		int enabled = 0;
-		for(OsmandSettings.CommonPreference<Boolean> p : prefs) {
-			count ++;
-			if(p.get()) {
+		for (OsmandSettings.CommonPreference<Boolean> p : prefs) {
+			count++;
+			if (p.get()) {
 				enabled++;
 			}
 		}
-		final String descr = enabled +"/"+count;
+		final String descr = enabled + "/" + count;
 		return descr;
 	}
 
@@ -439,9 +488,9 @@ public class ConfigureMapMenu {
 		
 		bld.setTitle(category);
 		
-		bld.setNegativeButton(R.string.default_buttons_cancel, null);
+		bld.setNegativeButton(R.string.shared_string_cancel, null);
 		
-		bld.setPositiveButton(R.string.default_buttons_ok, new DialogInterface.OnClickListener() {
+		bld.setPositiveButton(R.string.shared_string_ok, new DialogInterface.OnClickListener() {
 		    public void onClick(DialogInterface dialog, int whichButton) {
 				for (int i = 0; i < prefs.size(); i++) {
 					prefs.get(i).set(tempPrefs[i]);
@@ -457,7 +506,12 @@ public class ConfigureMapMenu {
 	}
 
 	protected String getRenderDescr(final MapActivity activity) {
-		return activity.getMyApplication().getRendererRegistry().getCurrentSelectedRenderer().getName();
+		RendererRegistry rr = activity.getMyApplication().getRendererRegistry();
+		RenderingRulesStorage storage = rr.getCurrentSelectedRenderer();
+		if (storage == null) {
+			return "";
+		}
+		return storage.getName();
 	}
 
 	protected String getDayNightDescr(final MapActivity activity) {

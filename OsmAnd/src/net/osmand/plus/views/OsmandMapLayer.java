@@ -1,10 +1,15 @@
 package net.osmand.plus.views;
 
+import gnu.trove.list.array.TIntArrayList;
+
+import java.util.List;
 import java.util.Map;
 
 import net.osmand.data.RotatedTileBox;
 import net.osmand.plus.ContextMenuAdapter;
+import net.osmand.util.MapAlgorithms;
 import android.graphics.Canvas;
+import android.graphics.Path;
 import android.graphics.PointF;
 import android.os.AsyncTask;
 import android.view.MotionEvent;
@@ -52,7 +57,7 @@ public abstract class OsmandMapLayer {
 		private final boolean updateVectorRendering;
 
 		public DrawSettings(boolean nightMode) {
-			this(nightMode,false);
+			this(nightMode, false);
 		}
 
 		public DrawSettings(boolean nightMode, boolean updateVectorRendering) {
@@ -69,6 +74,90 @@ public abstract class OsmandMapLayer {
 		}
 	}
 	
+	
+	private boolean isIn(int x, int y, int lx, int ty, int rx, int by) {
+		return x >= lx && x <= rx && y >= ty && y <= by;
+	}
+	
+	public int calculateSplitPaths(RotatedTileBox tb, TIntArrayList xs, TIntArrayList ys,
+			TIntArrayList results) {
+		int px = xs.get(0);
+		int py = ys.get(0);
+		int h = tb.getPixHeight();
+		int w = tb.getPixWidth();
+		int cnt = 0;
+		boolean pin = isIn(px, py, 0, 0, w, h);
+		Path path = null;
+		for(int i = 1; i < xs.size(); i++) {
+			int x = xs.get(i);
+			int y = ys.get(i);
+			boolean in = isIn(x, y, 0, 0, w, h);
+			boolean draw = false;
+			if(pin && in) {
+				draw = true;
+			} else {
+				long intersection = MapAlgorithms.calculateIntersection(x, y,
+						px, py, 0, w, h, 0);
+				if (intersection != -1) {
+					draw = true;
+				}
+			}
+			if (draw) {
+				path = new Path();
+				results.add(px);
+				results.add(py);
+				results.add(x);
+				results.add(y);
+			}
+			pin = in;
+			px = x;
+			py = y;
+		}
+		return cnt;
+	}
+	
+	public int calculatePath(RotatedTileBox tb, TIntArrayList xs, TIntArrayList ys, Path path) {
+		boolean start = false;
+		int px = xs.get(0);
+		int py = ys.get(0);
+		int h = tb.getPixHeight();
+		int w = tb.getPixWidth();
+		int cnt = 0;
+		boolean pin = isIn(px, py, 0, 0, w, h);
+		for(int i = 1; i < xs.size(); i++) {
+			int x = xs.get(i);
+			int y = ys.get(i);
+			boolean in = isIn(x, y, 0, 0, w, h);
+			boolean draw = false;
+			if(pin && in) {
+				draw = true;
+			} else {
+				long intersection = MapAlgorithms.calculateIntersection(x, y,
+						px, py, 0, w, h, 0);
+				if (intersection != -1) {
+					px = (int) (intersection >> 32);
+					py = (int) (intersection & 0xffffffff);
+					draw = true;
+				}
+			}
+			if (draw) {
+				if (!start) {
+					cnt++;
+					path.moveTo(px, py);
+				}
+				path.lineTo(x, y);
+				start = true;
+			} else{
+				start = false;
+			}
+			pin = in;
+			px = x;
+			py = y;
+		}
+		return cnt;
+	}
+	
+
 	public abstract class MapLayerData<T> {
 		public int ZOOM_THRESHOLD = 1;
 		public RotatedTileBox queriedBox;

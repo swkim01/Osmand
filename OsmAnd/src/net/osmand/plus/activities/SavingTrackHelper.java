@@ -12,6 +12,7 @@ import net.osmand.PlatformUtil;
 import net.osmand.data.LatLon;
 import net.osmand.plus.GPXUtilities;
 import net.osmand.plus.GPXUtilities.GPXFile;
+import net.osmand.plus.GPXUtilities.GPXTrackAnalysis;
 import net.osmand.plus.GPXUtilities.Track;
 import net.osmand.plus.GPXUtilities.TrkSegment;
 import net.osmand.plus.GPXUtilities.WptPt;
@@ -60,6 +61,7 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 	private float distance = 0;
 	private boolean isRecording = false;
 	private SelectedGpxFile currentTrack;
+	private int points;
 	
 	public SavingTrackHelper(OsmandApplication ctx){
 		super(ctx, DATABASE_NAME, null, DATABASE_VERSION);
@@ -69,7 +71,7 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 		GPXFile gx = new GPXFile();
 		gx.showCurrentTrack = true;
 		this.currentTrack.setGpxFile(gx);
-		this.currentTrack.getGpxFile().tracks.add(new Track());
+		prepareCurrentTrackForRecording();
 		updateScript = "INSERT INTO " + TRACK_NAME + " (" + TRACK_COL_LAT + ", " + TRACK_COL_LON + ", "
 				+ TRACK_COL_ALTITUDE + ", " + TRACK_COL_SPEED + ", " + TRACK_COL_HDOP + ", " + TRACK_COL_DATE + ")"
 				+ " VALUES (?, ?, ?, ?, ?, ?)"; //$NON-NLS-1$ //$NON-NLS-2$
@@ -139,8 +141,17 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 					if (has) {
 						return true;
 					}
-					q = db.query(false, POINT_NAME, new String[0], null, null, null, null, null, null);
+					q = db.query(false, POINT_NAME, new String[]{POINT_COL_LAT, POINT_COL_LON}, null, null, null, null, null, null);
 					has = q.moveToFirst();
+					while(has) {
+						if(q.getDouble(0) != 0 || q.getDouble(1) != 0) {
+							break;
+						}
+						if(!q.moveToNext()) {
+							has = false;
+							break;
+						}
+					}
 					q.close();
 					if (has) {
 						return true;
@@ -202,6 +213,12 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 			}
 		}
 		distance = 0;
+		points = 0;
+		currentTrack.getModifiableGpxFile().points.clear();
+		currentTrack.getModifiableGpxFile().tracks.clear();
+		currentTrack.getModifiablePointsToDisplay().clear();
+		currentTrack.getModifiableGpxFile().modifiedTime = System.currentTimeMillis();
+		prepareCurrentTrackForRecording();
 		return warnings;
 	}
 
@@ -309,7 +326,7 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 		lastTimeUpdated = 0;
 		lastPoint = null;
 		execWithClose(updateScript, new Object[] { 0, 0, 0, 0, 0, System.currentTimeMillis()});
-		addTrackPoint( null, true);
+		addTrackPoint( null, true, System.currentTimeMillis());
 	}
 	
 	public void updateLocation(net.osmand.Location location) {
@@ -367,10 +384,10 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 		}
 		lastTimeUpdated = time;
 		WptPt pt = new GPXUtilities.WptPt(lat, lon, time, alt, speed, hdop);
-		addTrackPoint(pt, newSegment);
+		addTrackPoint(pt, newSegment, time);
 	}
 	
-	private void addTrackPoint(WptPt pt, boolean newSegment) {
+	private void addTrackPoint(WptPt pt, boolean newSegment, long time) {
 		List<List<WptPt>> points = currentTrack.getModifiablePointsToDisplay();
 		Track track = currentTrack.getGpxFile().tracks.get(0);
 		assert track.segments.size() == points.size(); 
@@ -387,12 +404,15 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 			TrkSegment lt = track.segments.get(track.segments.size() - 1);
 			lt.points.add(pt);
 		}
+		currentTrack.getModifiableGpxFile().modifiedTime = time;
 	}
 	
 	public void insertPointData(double lat, double lon, long time, String description) {
 		final WptPt pt = new WptPt(lat, lon, time, Double.NaN, 0, Double.NaN);
 		pt.name = description;
 		currentTrack.getModifiableGpxFile().points.add(pt);
+		currentTrack.getModifiableGpxFile().modifiedTime = time;
+		points++;
 		execWithClose(updatePointsScript, new Object[] { lat, lon, time, description });
 	}
 	
@@ -411,11 +431,25 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 
 	public void loadGpxFromDatabase(){
 		Map<String, GPXFile> files = collectRecordedData();
+		currentTrack.getModifiableGpxFile().tracks.clear();
 		for (Map.Entry<String, GPXFile> entry : files.entrySet()){
 			currentTrack.getModifiableGpxFile().points.addAll(entry.getValue().points);
 			currentTrack.getModifiableGpxFile().tracks.addAll(entry.getValue().tracks);
 		}
 		currentTrack.processPoints();
+		prepareCurrentTrackForRecording();
+		GPXTrackAnalysis analysis = currentTrack.getModifiableGpxFile().getAnalysis(System.currentTimeMillis());
+		distance = analysis.totalDistance;
+		points = analysis.wptPoints;
+	}
+
+	private void prepareCurrentTrackForRecording() {
+		if(currentTrack.getModifiableGpxFile().tracks.size() == 0) {
+			currentTrack.getModifiableGpxFile().tracks.add(new Track());
+		}
+		while(currentTrack.getPointsToDisplay().size() < currentTrack.getModifiableGpxFile().tracks.size()) {
+			currentTrack.getModifiablePointsToDisplay().add(new ArrayList<GPXUtilities.WptPt>());
+		}
 	}
 
 	public boolean getIsRecording() {
@@ -424,6 +458,10 @@ public class SavingTrackHelper extends SQLiteOpenHelper {
 
 	public float getDistance() {
 		return distance;
+	}
+	
+	public int getPoints() {
+		return points;
 	}
 	
 	public long getLastTimeUpdated() {

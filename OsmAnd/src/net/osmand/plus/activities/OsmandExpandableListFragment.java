@@ -21,8 +21,8 @@ public abstract class OsmandExpandableListFragment extends Fragment
 		implements OnChildClickListener {
 	
 	
-	private ExpandableListView listView;
-	private ExpandableListAdapter adapter;
+	protected ExpandableListView listView;
+	protected ExpandableListAdapter adapter;
 
 
 	public OsmandApplication getMyApplication() {
@@ -38,6 +38,15 @@ public abstract class OsmandExpandableListFragment extends Fragment
 			listView.setAdapter(this.adapter);
 		}
 		return v;
+	}
+	
+	@Override
+	public void onActivityCreated(Bundle savedInstanceState) {
+		super.onActivityCreated(savedInstanceState);
+		getExpandableListView().setBackgroundColor(
+				getResources().getColor(
+						getMyApplication().getSettings().isLightContent() ? R.color.bg_color_light
+								: R.color.bg_color_dark));
 	}
 
 	public View createView(android.view.LayoutInflater inflater, android.view.ViewGroup container) {
@@ -64,7 +73,9 @@ public abstract class OsmandExpandableListFragment extends Fragment
 		}
 	}
 
-	public ExpandableListView getExpandableListView() { return listView; }
+	public ExpandableListView getExpandableListView() {
+		return listView;
+	}
 
 	public void setListView(ExpandableListView listView) {
 		this.listView = listView;

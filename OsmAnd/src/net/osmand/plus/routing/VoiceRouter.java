@@ -2,12 +2,12 @@ package net.osmand.plus.routing;
 
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.osmand.Location;
 import net.osmand.binary.RouteDataObject;
+import net.osmand.data.PointDescription;
 import net.osmand.plus.ApplicationMode;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.helpers.WaypointHelper.LocationPointWrapper;
@@ -22,11 +22,8 @@ import net.osmand.util.Algorithms;
 import net.osmand.util.MapUtils;
 import alice.tuprolog.Struct;
 import alice.tuprolog.Term;
-import android.content.Context;
 import android.media.AudioManager;
 import android.media.SoundPool;
-import android.os.Handler;
-import android.os.Looper;
 
 
 public class VoiceRouter {
@@ -79,10 +76,10 @@ public class VoiceRouter {
     }
     private ConcurrentHashMap<VoiceMessageListener, Integer> voiceMessageListeners;
     
-	public VoiceRouter(RoutingHelper router, final OsmandSettings settings, CommandPlayer player) {
+	public VoiceRouter(RoutingHelper router, final OsmandSettings settings) {
 		this.router = router;
-		this.player = player;
         this.settings = settings;
+        this.mute = settings.VOICE_MUTE.get();
 
 		empty = new Struct("");
 		voiceMessageListeners = new ConcurrentHashMap<VoiceRouter.VoiceMessageListener, Integer>();
@@ -322,7 +319,7 @@ public class VoiceRouter {
 			} else {
 				text += ", ";
 			}
-			text += point.getPoint().getName(router.getApplication());
+			text += PointDescription.getSimpleName(point.getPoint(), router.getApplication());
 		}
 		return text;
 	}

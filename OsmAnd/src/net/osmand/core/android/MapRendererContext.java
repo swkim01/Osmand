@@ -17,6 +17,7 @@ import net.osmand.core.jni.MapPresentationEnvironment.LanguagePreference;
 import net.osmand.core.jni.MapPrimitivesProvider;
 import net.osmand.core.jni.MapPrimitiviser;
 import net.osmand.core.jni.MapRasterLayerProvider_Software;
+import net.osmand.core.jni.MapRendererSetupOptions;
 import net.osmand.core.jni.MapStylesCollection;
 import net.osmand.core.jni.ObfMapObjectsProvider;
 import net.osmand.core.jni.QStringStringHash;
@@ -70,10 +71,10 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
 	 */
 	public void setMapRendererView(MapRendererView mapRendererView) {
 		boolean update = (this.mapRendererView != mapRendererView);
+		this.mapRendererView = mapRendererView;
 		if (!update) {
 			return;
 		}
-		this.mapRendererView = mapRendererView;
 		if (mapRendererView != null) {
 			applyCurrentContextToView();
 		}
@@ -106,23 +107,18 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
 		recreateRasterAndSymbolsProvider();
 	}
 
-	protected float getDisplayDensityFactor() {
-		return app.getSettings().MAP_DENSITY.get() * Math.max(1, density);
-	}
-
 	protected int getRasterTileSize() {
-		return Integer.highestOneBit((int) getReferenceTileSize() - 1) * 2;
+		return (int)(getReferenceTileSize() * app.getSettings().MAP_DENSITY.get());
 	}
 	
 	private float getReferenceTileSize() {
-		return 256 * getDisplayDensityFactor();
+		return 256 * Math.max(1, density);
 	}
 	
 	/**
 	 * Update map presentation environment and everything that depends on it
 	 */
 	private void updateMapPresentationEnvironment() {
-		float displayDensityFactor = getDisplayDensityFactor();
 		// Create new map presentation environment
 		String langId = app.getSettings().MAP_PREFERRED_LOCALE.get();
 		// TODO make setting
@@ -156,10 +152,12 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
             }
 		}
 		ResolvedMapStyle mapStyle = mapStyles.get(rendName);
-		CachedMapPresentation pres = new CachedMapPresentation(langId, langPref, mapStyle, displayDensityFactor);
+		CachedMapPresentation pres = new CachedMapPresentation(langId, langPref, mapStyle, density,
+				app.getSettings().MAP_DENSITY.get(), app.getSettings().TEXT_SCALE.get());
 		if (this.presentationObjectParams == null || !this.presentationObjectParams.equalsFields(pres)) {
 			this.presentationObjectParams = pres;
-			mapPresentationEnvironment = new MapPresentationEnvironment(mapStyle, displayDensityFactor, langId,
+			mapPresentationEnvironment = new MapPresentationEnvironment(mapStyle, density,
+					app.getSettings().MAP_DENSITY.get(), app.getSettings().TEXT_SCALE.get(), langId,
 					langPref);
 		}
 
@@ -201,6 +199,7 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
 	
 	private void recreateRasterAndSymbolsProvider() {
 		// Create new map primitiviser
+		// TODO Victor ask MapPrimitiviser, ObfMapObjectsProvider  
 		MapPrimitiviser mapPrimitiviser = new MapPrimitiviser(mapPresentationEnvironment);
 		ObfMapObjectsProvider obfMapObjectsProvider = new ObfMapObjectsProvider(obfsCollection);
 		// Create new map primitives provider
@@ -225,8 +224,8 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
 			mapRendererView.removeSymbolsProvider(obfMapSymbolsProvider);
 		}
 		// Create new OBF map symbols provider
-		obfMapSymbolsProvider = new MapObjectsSymbolsProvider(mapPrimitivesProvider, getReferenceTileSize(),
-				app.getSettings().TEXT_SCALE.get());
+		obfMapSymbolsProvider = new MapObjectsSymbolsProvider(mapPrimitivesProvider,
+				getReferenceTileSize());
 		// If there's bound view, add new provider
 		if (mapRendererView != null) {
 			mapRendererView.addSymbolsProvider(obfMapSymbolsProvider);
@@ -234,6 +233,14 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
 	}
 	
 	private void applyCurrentContextToView() {
+		mapRendererView.setMapRendererSetupOptionsConfigurator(
+				new MapRendererView.IMapRendererSetupOptionsConfigurator() {
+					@Override
+					public void configureMapRendererSetupOptions(
+							MapRendererSetupOptions mapRendererSetupOptions) {
+						mapRendererSetupOptions.setMaxNumberOfRasterMapLayersInBatch(1);
+					}
+				});
 		if (mapRendererView instanceof AtlasMapRendererView) {
 			cachedReferenceTileSize = getReferenceTileSize();
 			((AtlasMapRendererView)mapRendererView).setReferenceTileSizeOnScreenInPixels(cachedReferenceTileSize);
@@ -252,21 +259,30 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
 		String langId ;
 		LanguagePreference langPref;
 		ResolvedMapStyle mapStyle;
-		double displayDensityFactor;
+		float displayDensityFactor;
+		float mapScaleFactor;
+		float symbolsScaleFactor;
 		
 		public CachedMapPresentation(String langId,
 				LanguagePreference langPref, ResolvedMapStyle mapStyle,
-				double displayDensityFactor) {
+				float displayDensityFactor,
+				float mapScaleFactor,
+				float symbolsScaleFactor) {
 			this.langId = langId;
 			this.langPref = langPref;
 			this.mapStyle = mapStyle;
 			this.displayDensityFactor = displayDensityFactor;
+			this.mapScaleFactor = mapScaleFactor;
+			this.symbolsScaleFactor = symbolsScaleFactor;
 		}
 		
 		
 		public boolean equalsFields(CachedMapPresentation other ) {
-			if (Double.doubleToLongBits(displayDensityFactor) != Double
-					.doubleToLongBits(other.displayDensityFactor))
+			if (Double.compare(displayDensityFactor, other.displayDensityFactor) != 0)
+				return false;
+			if (Double.compare(mapScaleFactor, other.mapScaleFactor) != 0)
+				return false;
+			if (Double.compare(symbolsScaleFactor, other.symbolsScaleFactor) != 0)
 				return false;
 			if (langId == null) {
 				if (other.langId != null)
@@ -289,6 +305,9 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
     }
 
     private void loadStyleFromStream(String name, InputStream source) {
+    	if(source == null) {
+    		return;
+    	}
         if (RendererRegistry.DEFAULT_RENDER.equals(name)) {
             if (source != null) {
                 try {
@@ -314,7 +333,7 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
             return;
         } finally {
             try {
-                source.close();
+            	source.close();
             } catch(IOException e) {}
         }
 
@@ -323,4 +342,6 @@ public class MapRendererContext implements RendererRegistry.IRendererLoadedEvent
             Log.w(TAG, "Failed to add style from byte array");
         }
     }
+
+	
 }

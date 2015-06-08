@@ -2,15 +2,11 @@ package net.osmand.plus.activities;
 
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import android.view.Window;
-import net.osmand.CallbackWithObject;
 import net.osmand.IProgress;
 import net.osmand.IndexConstants;
 import net.osmand.access.AccessibleToast;
@@ -20,21 +16,20 @@ import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.OsmandSettings.DrivingRegion;
 import net.osmand.plus.OsmandSettings.MetricsConstants;
-import net.osmand.plus.ProgressImplementation;
 import net.osmand.plus.R;
 import net.osmand.plus.Version;
-import net.osmand.plus.base.SuggestExternalDirectoryDialog;
+import net.osmand.plus.dashboard.DashChooseAppDirFragment;
+import net.osmand.plus.dashboard.DashChooseAppDirFragment.ChooseAppDirFragment;
+import net.osmand.plus.dashboard.DashChooseAppDirFragment.MoveFilesToDifferentDirectory;
 import net.osmand.plus.download.DownloadActivity;
 import net.osmand.plus.download.DownloadActivityType;
 import net.osmand.plus.helpers.FileNameTranslationHelper;
 import net.osmand.plus.render.NativeOsmandLibrary;
 import net.osmand.plus.voice.CommandPlayer;
 import net.osmand.render.RenderingRulesStorage;
-import net.osmand.util.Algorithms;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
-import android.app.ProgressDialog;
-import android.content.Context;
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -42,6 +37,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.media.AudioManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
@@ -64,10 +60,9 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 	private ListPreference drivingRegionPreference;
 
 
-
 	@Override
     public void onCreate(Bundle savedInstanceState) {
-		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+		((OsmandApplication) getApplication()).applyTheme(this);
 		super.onCreate(savedInstanceState);
 		getToolbar().setTitle(R.string.global_app_settings);
 		addPreferencesFromResource(R.xml.general_settings);
@@ -311,6 +306,42 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 			}
 		});
 	}
+	
+	
+	public void showAppDirDialog(){
+		if(Build.VERSION.SDK_INT >= 19) {
+			 showAppDirDialogV19();
+			 return;
+		}
+		AlertDialog.Builder editalert = new AlertDialog.Builder(SettingsGeneralActivity.this);
+		editalert.setTitle(R.string.application_dir);
+		final EditText input = new EditText(SettingsGeneralActivity.this);
+		input.setText(settings.getExternalStorageDirectory().getAbsolutePath());
+		LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+		        LinearLayout.LayoutParams.MATCH_PARENT,
+		        LinearLayout.LayoutParams.MATCH_PARENT);
+		lp.leftMargin = lp.rightMargin = 5;
+		lp.bottomMargin = lp.topMargin = 5;
+		input.setLayoutParams(lp);
+		settings.getExternalStorageDirectory().getAbsolutePath();
+		editalert.setView(input);
+		editalert.setNegativeButton(R.string.shared_string_cancel, null);
+		editalert.setPositiveButton(R.string.shared_string_ok, new DialogInterface.OnClickListener() {
+		    public void onClick(DialogInterface dialog, int whichButton) {
+		    	warnAboutChangingStorage(input.getText().toString());
+		    }
+		});
+		editalert.show();
+		
+	}
+	
+	private void showAppDirDialogV19() {
+		Builder bld = new AlertDialog.Builder(this);
+		ChooseAppDirFragment frg = new DashChooseAppDirFragment.ChooseAppDirFragment(this, (Dialog) null);
+		bld.setView(frg.initView(getLayoutInflater(), null));
+		AlertDialog dlg = bld.show();
+		frg.setDialog(dlg);
+	}
 
 
 
@@ -321,42 +352,9 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 			applicationDir.setKey("external_storage_dir");
 			applicationDir.setOnPreferenceClickListener(new OnPreferenceClickListener() {
 				
-				public void showOtherDialog(){
-					AlertDialog.Builder editalert = new AlertDialog.Builder(SettingsGeneralActivity.this);
-					editalert.setTitle(R.string.application_dir);
-					final EditText input = new EditText(SettingsGeneralActivity.this);
-					input.setText(settings.getExternalStorageDirectory().getAbsolutePath());
-					input.setPadding(3, 3, 3, 3);
-					LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-					        LinearLayout.LayoutParams.MATCH_PARENT,
-					        LinearLayout.LayoutParams.MATCH_PARENT);
-					input.setLayoutParams(lp);
-					settings.getExternalStorageDirectory().getAbsolutePath();
-					editalert.setView(input);
-					editalert.setNegativeButton(R.string.default_buttons_cancel, null);
-					editalert.setPositiveButton(R.string.default_buttons_ok, new DialogInterface.OnClickListener() {
-					    public void onClick(DialogInterface dialog, int whichButton) {
-					    	warnAboutChangingStorage(input.getText().toString());
-					    }
-					});
-					editalert.show();
-				}
 				@Override
 				public boolean onPreferenceClick(Preference preference) {
-					SuggestExternalDirectoryDialog.showDialog(SettingsGeneralActivity.this, new OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							dialog.dismiss();
-							showOtherDialog();
-						}
-					}, new CallbackWithObject<String>() {
-						
-						@Override
-						public boolean processResult(String result) {
-							warnAboutChangingStorage(result);
-							return true;
-						}
-					});
+					showAppDirDialog();
 					return false;
 				}
 			});
@@ -384,8 +382,8 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 		
 		registerListPreference(
 				settings.OSMAND_THEME, misc,
-				new String[] { "Dark", "Light", "Dark ActionBar" }, new Integer[] { OsmandSettings.OSMAND_DARK_THEME,
-						OsmandSettings.OSMAND_LIGHT_THEME, OsmandSettings.OSMAND_LIGHT_DARK_ACTIONBAR_THEME });
+				new String[] { "Dark", "Light" }, new Integer[] { OsmandSettings.OSMAND_DARK_THEME,
+						OsmandSettings.OSMAND_LIGHT_THEME});
 		
 		misc.addPreference(createCheckBoxPreference(settings.USE_KALMAN_FILTER_FOR_COMPASS, R.string.use_kalman_filter_compass, R.string.use_kalman_filter_compass_descr));
 		
@@ -432,7 +430,6 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 				loadNativeLibrary();
 			}
 		} else if (preference == applicationDir) {
-			warnAboutChangingStorage((String) newValue);
 			return false;
 		} else if (id.equals(settings.APPLICATION_MODE.getId())) {
 			settings.DEFAULT_APPLICATION_MODE.set(settings.APPLICATION_MODE.get());
@@ -453,140 +450,51 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 		return true;
 	}
 	
-	public static class MoveFilesToDifferentDirectory extends AsyncTask<Void, Void, Boolean> {
-
-		private File to;
-		private Context ctx;
-		private File from;
-		protected ProgressImplementation progress;
-		private Runnable runOnSuccess;
-
-		public MoveFilesToDifferentDirectory(Context ctx, File from, File to) {
-			this.ctx = ctx;
-			this.from = from;
-			this.to = to;
-		}
-		
-		public void setRunOnSuccess(Runnable runOnSuccess) {
-			this.runOnSuccess = runOnSuccess;
-		}
-		
-		@Override
-		protected void onPreExecute() {
-			progress = ProgressImplementation.createProgressDialog(
-					ctx, ctx.getString(R.string.copying_osmand_files),
-					ctx.getString(R.string.copying_osmand_files_descr, to.getPath()),
-					ProgressDialog.STYLE_HORIZONTAL);
-		}
-		
-		@Override
-		protected void onPostExecute(Boolean result) {
-			if (result != null) {
-				if (result.booleanValue() && runOnSuccess != null) {
-					runOnSuccess.run();
-				} else if (!result.booleanValue()) {
-					Toast.makeText(ctx, R.string.input_output_error, Toast.LENGTH_LONG).show();
-				}
-			}
-			if(progress.getDialog().isShowing()) {
-				progress.getDialog().dismiss();
-			}
-		}
-		
-		private void movingFiles(File f, File t, int depth) throws IOException {
-			if(depth <= 2) {
-				progress.startTask(ctx.getString(R.string.copying_osmand_one_file_descr, t.getName()), -1);
-			}
-			if (f.isDirectory()) {
-				t.mkdirs();
-				File[] lf = f.listFiles();
-				if (lf != null) {
-					for (int i = 0; i < lf.length; i++) {
-						if (lf[i] != null) {
-							movingFiles(lf[i], new File(t, lf[i].getName()), depth + 1);
-						}
-					}
-				}
-				f.delete();
-			} else if (f.isFile()) {
-				if(t.exists()) {
-					Algorithms.removeAllFiles(t);
-				}
-				boolean rnm = false;
-				try {
-					rnm = f.renameTo(t);
-				} catch(RuntimeException e) {
-				}
-				if (!rnm) {
-					FileInputStream fin = new FileInputStream(f);
-					FileOutputStream fout = new FileOutputStream(t);
-					try {
-						Algorithms.streamCopy(fin, fout);
-					} finally {
-						fin.close();
-						fout.close();
-					}
-					f.delete();
-				}
-			}
-			if(depth <= 2) {
-				progress.finishTask();
-			}
-		}
-
-		@Override
-		protected Boolean doInBackground(Void... params) {
-			to.mkdirs();
-			try {
-				movingFiles(from, to, 0);
-			} catch (IOException e) {
-				return false;
-			}
-			return true;
-		}
-		
-	}
+	
 
 	private void warnAboutChangingStorage(final String newValue) {
-		final String newDir = newValue != null ? newValue.trim() : newValue;
-		File path = new File(newDir);
+		String newDir = newValue != null ? newValue.trim() : newValue;
+		if(!newDir.replace('/', ' ').trim().
+				toLowerCase().endsWith(IndexConstants.APP_DIR.replace('/', ' ').trim())) {
+			newDir += "/" +IndexConstants.APP_DIR; 
+		}
+		final File path = new File(newDir);
 		path.mkdirs();
 		if (!path.canRead() || !path.exists()) {
 			AccessibleToast.makeText(this, R.string.specified_dir_doesnt_exist, Toast.LENGTH_LONG).show();
 			return;
 		}
 		Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage(getString(R.string.application_dir_change_warning2));
-		builder.setPositiveButton(R.string.default_buttons_yes, new OnClickListener() {
+		builder.setMessage(getString(R.string.application_dir_change_warning3));
+		builder.setPositiveButton(R.string.shared_string_yes, new OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
 				MoveFilesToDifferentDirectory task =
 						new MoveFilesToDifferentDirectory(SettingsGeneralActivity.this, 
-						new File(settings.getExternalStorageDirectory(), IndexConstants.APP_DIR), new File(newDir,
-								IndexConstants.APP_DIR));
+						settings.getExternalStorageDirectory(), path);
 				task.setRunOnSuccess(new Runnable() {
 					@Override
 					public void run() {
-						updateSettingsToNewDir(newDir);						
+						updateSettingsToNewDir(path.getParentFile().getAbsolutePath());						
 					}
 				});
 				task.execute();
 			}
 		});
-		builder.setNeutralButton(R.string.default_buttons_no, new OnClickListener() {
+		builder.setNeutralButton(R.string.shared_string_no, new OnClickListener() {
 			
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
-				updateSettingsToNewDir(newDir);								
+				updateSettingsToNewDir(path.getParentFile().getAbsolutePath());								
 			}
 		});
-		builder.setNegativeButton(R.string.default_buttons_cancel, null);
+		builder.setNegativeButton(R.string.shared_string_cancel, null);
 		builder.show();
 	}
 	
 	private void updateSettingsToNewDir(final String newDir) {
 		// edit the preference
-		settings.setExternalStorageDirectory(newDir);
+		settings.setExternalStorageDirectoryPre19(newDir);
 		getMyApplication().getResourceManager().resetStoreDirectory();
 		reloadIndexes();
 		updateApplicationDirTextAndSummary();
@@ -601,7 +509,8 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 
 			@Override
 			protected List<String> doInBackground(Void... params) {
-				return getMyApplication().getResourceManager().reloadIndexes(IProgress.EMPTY_PROGRESS);
+				return getMyApplication().getResourceManager().reloadIndexes(IProgress.EMPTY_PROGRESS, 
+						new ArrayList<String>());
 			}
 			
 			protected void onPostExecute(List<String> result) {
@@ -672,9 +581,9 @@ public class SettingsGeneralActivity extends SettingsBaseActivity {
 		entries = new String[voiceFiles.size() + 2];
 		entrieValues = new String[voiceFiles.size() + 2];
 		int k = 0;
-		// entries[k++] = getString(R.string.voice_not_specified);
+		// entries[k++] = getString(R.string.shared_string_none);
 		entrieValues[k] = OsmandSettings.VOICE_PROVIDER_NOT_USE;
-		entries[k++] = getString(R.string.voice_not_use);
+		entries[k++] = getString(R.string.shared_string_do_not_use);
 		for (String s : voiceFiles) {
 			entries[k] = (s.contains("tts") ? getString(R.string.ttsvoice) +" ":"") +
 					FileNameTranslationHelper.getVoiceName(this, s);

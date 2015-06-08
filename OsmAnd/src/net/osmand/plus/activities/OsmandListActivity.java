@@ -9,6 +9,7 @@ import android.widget.HeaderViewListAdapter;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import net.osmand.plus.OsmandApplication;
+import net.osmand.plus.R;
 import android.app.ActionBar;
 import android.graphics.Shader.TileMode;
 import android.graphics.drawable.BitmapDrawable;
@@ -18,14 +19,22 @@ import android.view.View;
 
 
 public abstract class OsmandListActivity extends
-		ActionBarActivity implements AdapterView.OnItemClickListener {
+		ActionBarProgressActivity implements AdapterView.OnItemClickListener {
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		((OsmandApplication) getApplication()).applyTheme(this);
 		super.onCreate(savedInstanceState);
 		getSupportActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+	}
+	
+	@Override
+	protected void onStart() {
+		super.onStart();
+		getListView().setBackgroundColor(
+				getResources().getColor(
+						getMyApplication().getSettings().isLightContent() ? R.color.bg_color_light
+								: R.color.bg_color_dark));
 	}
 
 
@@ -46,11 +55,10 @@ public abstract class OsmandListActivity extends
 		return false;
 	}
 
-	public MenuItem createMenuItem(Menu m, int id, int titleRes, int iconLight, int iconDark, int menuItemType) {
-		int r = isLightActionBar() ? iconLight : iconDark;
+	public MenuItem createMenuItem(Menu m, int id, int titleRes, int iconDark, int menuItemType) {
 		MenuItem menuItem = m.add(0, id, 0, titleRes);
-		if (r != 0) {
-			menuItem.setIcon(r);
+		if (iconDark != 0) {
+			menuItem.setIcon(getMyApplication().getIconsCache().getIcon(iconDark));
 		}
 		menuItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
 			@Override
@@ -62,20 +70,10 @@ public abstract class OsmandListActivity extends
 		return menuItem;
 	}
 
-	public void fixBackgroundRepeat(View view) {
-		Drawable bg = view.getBackground();
-		if (bg != null) {
-			if (bg instanceof BitmapDrawable) {
-				BitmapDrawable bmp = (BitmapDrawable) bg;
-				// bmp.mutate(); // make sure that we aren't sharing state anymore
-				bmp.setTileModeXY(TileMode.REPEAT, TileMode.REPEAT);
-			}
-		}
-	}
-
-
 	public void setListAdapter(ListAdapter adapter){
 		((ListView)findViewById(android.R.id.list)).setAdapter(adapter);
+		setOnItemClickListener(this);
+
 	}
 
 	public ListView getListView() {

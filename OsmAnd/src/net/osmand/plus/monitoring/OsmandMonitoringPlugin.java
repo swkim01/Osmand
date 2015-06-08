@@ -5,6 +5,7 @@ import gnu.trove.list.array.TIntArrayList;
 import java.util.List;
 
 import net.osmand.Location;
+import net.osmand.ValueHolder;
 import net.osmand.plus.ApplicationMode;
 import net.osmand.plus.ContextMenuAdapter;
 import net.osmand.plus.ContextMenuAdapter.OnContextMenuClick;
@@ -17,44 +18,35 @@ import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.MapActivity;
 import net.osmand.plus.activities.SavingTrackHelper;
-import net.osmand.plus.activities.SettingsActivity;
 import net.osmand.plus.views.MapInfoLayer;
-import net.osmand.plus.views.MonitoringInfoControl;
-import net.osmand.plus.views.MonitoringInfoControl.MonitoringInfoControlServices;
-import net.osmand.plus.views.MonitoringInfoControl.ValueHolder;
 import net.osmand.plus.views.OsmandMapLayer.DrawSettings;
 import net.osmand.plus.views.OsmandMapTileView;
-import net.osmand.plus.views.mapwidgets.BaseMapWidget;
 import net.osmand.plus.views.mapwidgets.TextInfoWidget;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
-import android.content.Intent;
-import android.graphics.Paint;
-import android.graphics.drawable.Drawable;
-import android.preference.Preference;
-import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceScreen;
+import android.util.DisplayMetrics;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
 import android.widget.LinearLayout.LayoutParams;
+import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 
-public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringInfoControlServices {
+public class OsmandMonitoringPlugin extends OsmandPlugin {
 	private static final String ID = "osmand.monitoring";
 	private OsmandSettings settings;
 	private OsmandApplication app;
-	private BaseMapWidget monitoringControl;
+	private TextInfoWidget monitoringControl;
 	private LiveMonitoringHelper liveMonitoringHelper;
-	private boolean ADD_BG_TO_ACTION = true;
 	private boolean isSaving;
 
 	public OsmandMonitoringPlugin(OsmandApplication app) {
@@ -68,9 +60,19 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 	public void updateLocation(Location location) {
 		liveMonitoringHelper.updateLocation(location);
 	}
+	
+	@Override
+	public int getLogoResourceId() {
+		return R.drawable.ic_action_gps_info;
+	}
+	
+	@Override
+	public int getAssetResourceName() {
+		return R.drawable.trip_recording;
+	}
 
 	@Override
-	public boolean init(OsmandApplication app) {
+	public boolean init(OsmandApplication app, Activity activity) {
 		settings = app.getSettings();
 		return true;
 	}
@@ -93,10 +95,10 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 	@Override
 	public void registerLayers(MapActivity activity) {
 		MapInfoLayer layer = activity.getMapLayers().getMapInfoLayer();
-		monitoringControl = createMonitoringControl(activity, layer.getPaintText(), layer.getPaintSubText());
+		monitoringControl = createMonitoringControl(activity);
 		
-		layer.getMapInfoControls().registerSideWidget(monitoringControl,
-				R.drawable.monitoring_rec_big, R.drawable.monitoring_rec_big, R.string.map_widget_monitoring, "monitoring", false, 18);
+		layer.registerSideWidget(monitoringControl,
+				R.drawable.ic_action_play_dark, R.string.map_widget_monitoring, "monitoring", false, 18);
 		layer.recreateControls();
 	}
 
@@ -104,10 +106,6 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 	public void updateLayers(OsmandMapTileView mapView, MapActivity activity) {
 		if(monitoringControl == null) {
 			registerLayers(activity);
-		}
-		MonitoringInfoControl lock = activity.getMapLayers().getMapInfoLayer().getMonitoringInfoControl();
-		if(lock != null && !lock.getMonitorActions().contains(this)) {
-			lock.addMonitorActions(this);
 		}
 	}
 
@@ -123,29 +121,17 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 				return true;
 			}
 		};
-		adapter.item(R.string.context_menu_item_add_waypoint).icons(R.drawable.ic_action_gnew_label_dark, R.drawable.ic_action_gnew_label_light)
+		adapter.item(R.string.context_menu_item_add_waypoint).iconColor(R.drawable.ic_action_gnew_label_dark)
 		.listen(listener).reg();
 	}
 	
 	public static final int[] SECONDS = new int[] {0, 1, 2, 3, 5, 10, 15, 30, 60, 90};
 	public static final int[] MINUTES = new int[] {2, 3, 5};
+
 	
 	@Override
-	public void settingsActivityCreate(final SettingsActivity activity, PreferenceScreen screen) {
-		Preference grp = new Preference(activity);
-		grp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				activity.startActivity(new Intent(activity, SettingsMonitoringActivity.class));
-				return true;
-			}
-		});
-		grp.setTitle(R.string.monitoring_settings);
-		grp.setSummary(R.string.monitoring_settings_descr);
-		grp.setKey("monitoring_settings");
-		screen.addPreference(grp);
-		
+	public Class<? extends Activity> getSettingsActivity() {
+		return SettingsMonitoringActivity.class;
 	}
 
 	
@@ -153,23 +139,20 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 	/**
 	 * creates (if it wasn't created previously) the control to be added on a MapInfoLayer that shows a monitoring state (recorded/stopped)
 	 */
-	private BaseMapWidget createMonitoringControl(final MapActivity map, Paint paintText, Paint paintSubText) {
-		final Drawable monitoringBig = map.getResources().getDrawable(R.drawable.monitoring_rec_big);
-		final Drawable monitoringSmall = map.getResources().getDrawable(R.drawable.monitoring_rec_small);
-		final Drawable monitoringInactive = map.getResources().getDrawable(R.drawable.monitoring_rec_inactive);
-		monitoringControl = new TextInfoWidget(map, 0, paintText, paintSubText) {
+	private TextInfoWidget createMonitoringControl(final MapActivity map) {
+		monitoringControl = new TextInfoWidget(map) {
 			long lastUpdateTime;
 			@Override
 			public boolean updateInfo(DrawSettings drawSettings) {
 				if(isSaving){
-					setText(map.getString(R.string.import_save), "");
-					setImageDrawable(monitoringBig);
+					setText(map.getString(R.string.shared_string_save), "");
+					setIcons(R.drawable.widget_monitoring_rec_big_day, R.drawable.widget_monitoring_rec_big_night);
 					return true;
 				}
-				boolean visible = true;
 				String txt = map.getString(R.string.monitoring_control_start);
 				String subtxt = null;
-				Drawable d = monitoringInactive;
+				int dn = R.drawable.widget_monitoring_rec_inactive_night;
+				int d = R.drawable.widget_monitoring_rec_inactive_day;
 				long last = lastUpdateTime;
 				final boolean globalRecord = settings.SAVE_GLOBAL_TRACK_TO_GPX.get();
 				final boolean isRecording = app.getSavingTrackHelper().getIsRecording();
@@ -190,34 +173,43 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 
 				if(globalRecord) {
 					//indicates global recording (+background recording)
-					d = monitoringBig;
+					dn = R.drawable.widget_monitoring_rec_big_night;
+					d = R.drawable.widget_monitoring_rec_big_day;
 				} else if (isRecording) {
 					//indicates (profile-based, configured in settings) recording (looks like is only active during nav in follow mode)
-					d = monitoringSmall;
+					dn = R.drawable.widget_monitoring_rec_small_night;
+					d = R.drawable.widget_monitoring_rec_small_day;
 				} else {
-					d = monitoringInactive;
+					dn = R.drawable.widget_monitoring_rec_inactive_night;
+					d = R.drawable.widget_monitoring_rec_inactive_day;
 				}
 
 				setText(txt, subtxt);
-				setImageDrawable(d);
+				setIcons(d, dn);
 				if ((last != lastUpdateTime) && (globalRecord || isRecording)) {
 					lastUpdateTime = last;
 					//blink implementation with 2 indicator states (global logging + profile/navigation logging)
-					setImageDrawable(monitoringInactive);
-					invalidate();
-					postDelayed(new Runnable() {
+					if (globalRecord) {
+						setIcons(R.drawable.widget_monitoring_rec_small_day,
+							R.drawable.widget_monitoring_rec_small_night);
+					} else {
+						setIcons(R.drawable.widget_monitoring_rec_small_day,
+								R.drawable.widget_monitoring_rec_small_night);
+					}
+					
+					map.getMyApplication().runInUIThread(new Runnable() {
 						@Override
 						public void run() {
 							if (globalRecord) {
-								setImageDrawable(monitoringBig);
+								setIcons(R.drawable.widget_monitoring_rec_big_day,
+										R.drawable.widget_monitoring_rec_big_night);
 							} else {
-								setImageDrawable(monitoringSmall);
+								setIcons(R.drawable.widget_monitoring_rec_small_day,
+										R.drawable.widget_monitoring_rec_small_night);
 							}
-							invalidate();
 						}
 					}, 500);
 				}
-				updateVisibility(visible);
 				return true;
 			}
 		};
@@ -235,7 +227,7 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 		return monitoringControl;
 	}
 
-	private void controlDialog(final MapActivity map) {
+	private void controlDialog(final Activity map) {
 		final boolean wasTrackMonitored = settings.SAVE_GLOBAL_TRACK_TO_GPX.get();
 		
 		Builder bld = new AlertDialog.Builder(map);
@@ -255,7 +247,7 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 			items.add(R.string.save_current_track);
 		}
 		String[] strings = new String[items.size()];
-		for(int i =0; i < strings.length; i++) {
+		for (int i = 0; i < strings.length; i++) {
 			strings[i] = app.getString(items.get(i));
 		}
 		final int[] holder = new int[] {0};
@@ -264,29 +256,11 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 				int which = holder[0];
 				int item = items.get(which);
 				if(item == R.string.save_current_track){
-					app.getTaskManager().runInBackground(new OsmAndTaskRunnable<Void, Void, Void>() {
-						
-						@Override
-						protected Void doInBackground(Void... params) {
-							isSaving = true;
-							try {
-								SavingTrackHelper helper = app.getSavingTrackHelper();
-								helper.saveDataToGpx(app.getAppCustomization().getTracksDir());
-								helper.close();
-							} finally {
-								isSaving = false;
-							}
-							return null;
-						}
-
-					}, (Void) null);
+					saveCurrentTrack();
 				} else if(item == R.string.gpx_monitoring_start) {
 					startGPXMonitoring(map);
 				} else if(item == R.string.gpx_monitoring_stop) {
-					settings.SAVE_GLOBAL_TRACK_TO_GPX.set(false);
-					if (app.getNavigationService() != null) {
-						app.getNavigationService().stopIfNeeded(app, NavigationService.USED_BY_GPX);
-					}
+					stopRecording();
 				} else if(item == R.string.gpx_start_new_segment) {
 					app.getSavingTrackHelper().startNewSegment();
 				} else if(item == R.string.live_monitoring_stop) {
@@ -321,14 +295,40 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 		}
 	}
 
-	private void startGPXMonitoring(MapActivity map) {
-		app.getSavingTrackHelper().startNewSegment();
+	public void saveCurrentTrack() {
+		app.getTaskManager().runInBackground(new OsmAndTaskRunnable<Void, Void, Void>() {
+
+			@Override
+			protected Void doInBackground(Void... params) {
+				isSaving = true;
+				try {
+					SavingTrackHelper helper = app.getSavingTrackHelper();
+					helper.saveDataToGpx(app.getAppCustomization().getTracksDir());
+					helper.close();
+				} finally {
+					isSaving = false;
+				}
+				return null;
+			}
+
+		}, (Void) null);
+	}
+
+	public void stopRecording(){
+		settings.SAVE_GLOBAL_TRACK_TO_GPX.set(false);
+		if (app.getNavigationService() != null) {
+			app.getNavigationService().stopIfNeeded(app, NavigationService.USED_BY_GPX);
+		}
+	}
+
+	public void startGPXMonitoring(Activity map) {
 		final ValueHolder<Integer> vs = new ValueHolder<Integer>();
 		final ValueHolder<Boolean> choice = new ValueHolder<Boolean>();
 		vs.value = settings.SAVE_GLOBAL_TRACK_INTERVAL.get();
 		choice.value = settings.SAVE_GLOBAL_TRACK_REMEMBER.get();
 		final Runnable runnable = new Runnable() {
 			public void run() {
+				app.getSavingTrackHelper().startNewSegment();
 				settings.SAVE_GLOBAL_TRACK_INTERVAL.set(vs.value);
 				settings.SAVE_GLOBAL_TRACK_TO_GPX.set(true);
 				settings.SAVE_GLOBAL_TRACK_REMEMBER.set(choice.value);
@@ -357,17 +357,33 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 		}
 		
 	}
-	
+
 	public static void showIntervalChooseDialog(final Context uiCtx, final String patternMsg,
 			String title, final int[] seconds, final int[] minutes, final ValueHolder<Boolean> choice, final ValueHolder<Integer> v, OnClickListener onclick){
 		Builder dlg = new AlertDialog.Builder(uiCtx);
 		dlg.setTitle(title);
+		WindowManager mgr = (WindowManager) uiCtx.getSystemService(Context.WINDOW_SERVICE);
+		DisplayMetrics dm = new DisplayMetrics();
+		mgr.getDefaultDisplay().getMetrics(dm);
+		LinearLayout ll = createIntervalChooseLayout(uiCtx, patternMsg, seconds, minutes,
+				choice, v, dm);
+		dlg.setView(ll);
+		dlg.setPositiveButton(R.string.shared_string_ok, onclick);
+		dlg.setNegativeButton(R.string.shared_string_cancel, null);
+		dlg.show();
+	}
+
+	public static LinearLayout createIntervalChooseLayout(final Context uiCtx,
+			final String patternMsg, final int[] seconds, final int[] minutes,
+			final ValueHolder<Boolean> choice, final ValueHolder<Integer> v, DisplayMetrics dm) {
 		LinearLayout ll = new LinearLayout(uiCtx);
 		final TextView tv = new TextView(uiCtx);
-		tv.setPadding(7, 3, 7, 0);
+		tv.setPadding((int)(7 * dm.density), (int)(3 * dm.density), (int)(7* dm.density), 0);
 		tv.setText(String.format(patternMsg, uiCtx.getString(R.string.int_continuosly)));
+		
+		
 		SeekBar sp = new SeekBar(uiCtx);
-		sp.setPadding(7, 5, 7, 0);
+		sp.setPadding((int)(7 * dm.density), (int)(5 * dm.density), (int)(7* dm.density), 0);
 		final int secondsLength = seconds.length;
     	final int minutesLength = minutes.length;
     	sp.setMax(secondsLength + minutesLength - 1);
@@ -418,10 +434,10 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 		ll.addView(sp);
 		if (choice != null) {
 			final CheckBox cb = new CheckBox(uiCtx);
-			cb.setText(R.string.remember_choice);
+			cb.setText(R.string.shared_string_remember_my_choice);
 			LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT,
 					LayoutParams.WRAP_CONTENT);
-			lp.setMargins(7, 10, 7, 0);
+			lp.setMargins((int)(7* dm.density), (int)(10* dm.density), (int)(7* dm.density), 0);
 			cb.setLayoutParams(lp);
 			cb.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
@@ -433,44 +449,7 @@ public class OsmandMonitoringPlugin extends OsmandPlugin implements MonitoringIn
 			});
 			ll.addView(cb);
 		}
-		dlg.setView(ll);
-		dlg.setPositiveButton(R.string.default_buttons_ok, onclick);
-		dlg.setNegativeButton(R.string.default_buttons_cancel, null);
-		dlg.show();
+		return ll;
 	}
 	
-	
-	@Override
-	public void addMonitorActions(final ContextMenuAdapter qa, final MonitoringInfoControl li, final OsmandMapTileView view) {
-		if (ADD_BG_TO_ACTION) {
-			final Intent serviceIntent = new Intent(view.getContext(), NavigationService.class);
-			final boolean bgoff = view.getApplication().getNavigationService() == null;
-			int msgId = !bgoff ? R.string.bg_service_sleep_mode_on : R.string.bg_service_sleep_mode_off;
-			int draw = !bgoff ? R.drawable.monitoring_rec_big : R.drawable.monitoring_rec_inactive;
-			qa.item(msgId).icon(draw).listen(new OnContextMenuClick() {
-				@Override
-				public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
-					if (view.getApplication().getNavigationService() == null) {
-						final ValueHolder<Integer> vs = new ValueHolder<Integer>();
-						final ValueHolder<Boolean> choice = new ValueHolder<Boolean>();
-						vs.value = view.getSettings().SERVICE_OFF_INTERVAL.get();
-						showIntervalChooseDialog(view.getContext(), app.getString(R.string.gps_wakeup_interval),
-								app.getString(R.string.background_router_service),
-								SettingsMonitoringActivity.BG_SECONDS, SettingsMonitoringActivity.BG_MINUTES, choice, vs,
-								new OnClickListener() {
-									@Override
-									public void onClick(DialogInterface dialog, int which) {
-										view.getSettings().SERVICE_OFF_INTERVAL.set(vs.value);
-										view.getContext().startService(serviceIntent);
-									}
-								});
-					} else {
-						view.getContext().stopService(serviceIntent);
-					}
-					return true;
-				}
-			}).position(0).reg();
-		}
-	}
-
 }

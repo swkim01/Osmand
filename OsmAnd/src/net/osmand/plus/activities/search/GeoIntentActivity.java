@@ -12,15 +12,18 @@ import java.util.List;
 import net.osmand.ResultMatcher;
 import net.osmand.access.AccessibleToast;
 import net.osmand.data.Amenity;
-import net.osmand.data.AmenityType;
 import net.osmand.data.City;
 import net.osmand.data.LatLon;
 import net.osmand.data.MapObject;
+import net.osmand.data.PointDescription;
 import net.osmand.data.Street;
+import net.osmand.plus.AppInitializer;
 import net.osmand.plus.OsmAndFormatter;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.R;
+import net.osmand.plus.AppInitializer.AppInitializeListener;
+import net.osmand.plus.AppInitializer.InitEvents;
 import net.osmand.plus.activities.MapActivity;
 import net.osmand.plus.activities.OsmandListActivity;
 import net.osmand.plus.resources.RegionAddressRepository;
@@ -43,15 +46,22 @@ public class GeoIntentActivity extends OsmandListActivity {
 
 	private ProgressDialog progressDlg;
 	private LatLon location;
-	private ProgressDialog startProgressDialog;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.search_address_offline);
 		getSupportActionBar().setTitle(R.string.search_osm_offline);
-		startProgressDialog = new ProgressDialog(this);
-		getMyApplication().checkApplicationIsBeingInitialized(this, startProgressDialog);
+		
+		getMyApplication().checkApplicationIsBeingInitialized(this, new AppInitializeListener() {
+			@Override
+			public void onProgress(AppInitializer init, InitEvents event) {
+			}
+			
+			@Override
+			public void onFinish(AppInitializer init) {
+			}
+		});
 		location = getMyApplication().getSettings().getLastKnownMapLocation();
 
 		final Intent intent = getIntent();
@@ -101,7 +111,7 @@ public class GeoIntentActivity extends OsmandListActivity {
 				while (getMyApplication().isApplicationInitializing()) {
 					Thread.sleep(200);
 				}
-				return extract(intent.getScheme(), intent.getData()).execute();
+				return extract(intent.getData()).execute();
 			} catch (Exception e) {
 				return null;
 			}
@@ -126,20 +136,13 @@ public class GeoIntentActivity extends OsmandListActivity {
 								.getItemId(0));
 					}
 				}
+				finish();
 			} else {
 				AccessibleToast.makeText(GeoIntentActivity.this,
 						getString(R.string.search_offline_geo_error, intent.getData()), Toast.LENGTH_LONG).show();
 			}
 		}
 
-	}
-
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		if (id == OsmandApplication.PROGRESS_DIALOG) {
-			return startProgressDialog;
-		}
-		return super.onCreateDialog(id);
 	}
 
 	private class MapObjectAdapter extends ArrayAdapter<MapObject> {
@@ -165,19 +168,20 @@ public class GeoIntentActivity extends OsmandListActivity {
 			} else {
 				distanceLabel.setText(""); //$NON-NLS-1$
 			}
-			label.setText(getString(model));
+			label.setText(getString(model).getFullPlainName(getApplication()));
 			return row;
 		}
 	}
 
-	private String getString(MapObject o) {
+	private PointDescription getString(MapObject o) {
 		if (o instanceof Amenity) {
-			return OsmAndFormatter.getPoiSimpleFormat((Amenity) o, getMyApplication(), false);
+			return new PointDescription(PointDescription.POINT_TYPE_POI,
+					OsmAndFormatter.getPoiStringWithoutType((Amenity) o, ((OsmandApplication) getApplication()).getSettings().MAP_PREFERRED_LOCALE.get()));
 		}
 		if (o instanceof Street) {
-			return getString(R.string.address) + " " + ((Street) o).getCity().getName() + " " + o.getName();
+			return new PointDescription(PointDescription.POINT_TYPE_ADDRESS, ((Street) o).getCity().getName() + " " + o.getName());
 		}
-		return getString(R.string.address) + " : " + o.toString();
+		return new PointDescription(PointDescription.POINT_TYPE_ADDRESS, o.toString());
 	}
 
 
@@ -202,19 +206,17 @@ public class GeoIntentActivity extends OsmandListActivity {
 	 * geo:0,0?q=34.99,-106.61(Treasure)<br/>
 	 * geo:0,0?q=1600+Amphitheatre+Parkway%2C+CA<br/>
 	 * 
-	 * @param scheme
-	 *            The intent scheme
 	 * @param data
 	 *            The intent uri
 	 * @return
 	 */
-	private MyService extract(final String scheme, final Uri data) {
-		GeoPointParserUtil.GeoParsedPoint p = GeoPointParserUtil.parse(scheme, data.toString());
+	private MyService extract(final Uri uri) {
+		GeoPointParserUtil.GeoParsedPoint p = GeoPointParserUtil.parse(uri.toString());
 		if (p.isGeoPoint()) {
-			if (p.getName() != null) {
-				return new GeoPointSearch(p.getLat(), p.getLon(), p.getName(), p.getZoom());
+			if (p.getLabel() != null) {
+				return new GeoPointSearch(p.getLatitude(), p.getLongitude(), p.getLabel(), p.getZoom());
 			}
-			return new GeoPointSearch(p.getLat(), p.getLon(), p.getZoom());
+			return new GeoPointSearch(p.getLatitude(), p.getLongitude(), p.getZoom());
 		} else {
 			return new GeoAddressSearch(p.getQuery());
 		}
@@ -277,7 +279,7 @@ public class GeoIntentActivity extends OsmandListActivity {
 			}
 
 			Amenity point = new Amenity();
-			((Amenity) point).setType(AmenityType.USER_DEFINED);
+			((Amenity) point).setType(getMyApplication().getPoiTypes().getUserDefinedCategory());
 			((Amenity) point).setSubType("");
 			point.setLocation(lat, lon);
 			point.setName("Lat: " + lat + ",Lon:" + lon);
@@ -381,7 +383,7 @@ public class GeoIntentActivity extends OsmandListActivity {
 	}
 
 	@SuppressWarnings("unused")
-	private static class GeoPointSearch implements MyService {
+	private class GeoPointSearch implements MyService {
 		private final MapObject point;
 		private final int zoom;
 
@@ -401,7 +403,7 @@ public class GeoIntentActivity extends OsmandListActivity {
 			final Amenity amenity = new Amenity();
 			amenity.setLocation(lat, lon);
 			amenity.setName(name);
-			amenity.setType(AmenityType.USER_DEFINED);
+			amenity.setType(getMyApplication().getPoiTypes().getUserDefinedCategory());
 			amenity.setSubType("");
 
 			this.point = amenity;

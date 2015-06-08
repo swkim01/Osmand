@@ -9,9 +9,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import android.preference.*;
-import android.view.MenuItem;
-import android.widget.AdapterView;
 import net.osmand.access.AccessibleToast;
 import net.osmand.plus.ApplicationMode;
 import net.osmand.plus.OsmandApplication;
@@ -26,11 +23,22 @@ import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnMultiChoiceClickListener;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.preference.CheckBoxPreference;
+import android.preference.EditTextPreference;
+import android.preference.ListPreference;
+import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
+import android.preference.PreferenceGroup;
+import android.preference.PreferenceScreen;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -71,6 +79,17 @@ public abstract class SettingsBaseActivity extends ActionBarPreferenceActivity
 
 
 	public CheckBoxPreference createCheckBoxPreference(OsmandPreference<Boolean> b, int title, int summary) {
+		CheckBoxPreference p = new CheckBoxPreference(this);
+		p.setTitle(title);
+		p.setKey(b.getId());
+		p.setSummary(summary);
+		p.setOnPreferenceChangeListener(this);
+		screenPreferences.put(b.getId(), p);
+		booleanPreferences.put(b.getId(), b);
+		return p;
+	}
+	
+	public CheckBoxPreference createCheckBoxPreference(OsmandPreference<Boolean> b, String title, String summary) {
 		CheckBoxPreference p = new CheckBoxPreference(this);
 		p.setTitle(title);
 		p.setKey(b.getId());
@@ -302,12 +321,10 @@ public abstract class SettingsBaseActivity extends ActionBarPreferenceActivity
 	@SuppressWarnings("deprecation")
 	@Override
     public void onCreate(Bundle savedInstanceState) {
-		((OsmandApplication) getApplication()).applyTheme(this);
-		//getToolbar().setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
-
 		super.onCreate(savedInstanceState);
-		getToolbar().setTitle(R.string.settings_activity);
 		settings = getMyApplication().getSettings();
+		getToolbar().setTitle(R.string.shared_string_settings);
+
 		
 		if (profileSettings) {
 			modes.clear();
@@ -316,15 +333,14 @@ public abstract class SettingsBaseActivity extends ActionBarPreferenceActivity
 					modes.add(a);
 				}
 			}
-			//getToolbar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
 			List<String> s = new ArrayList<String>();
 			for (ApplicationMode a : modes) {
 				s.add(a.toHumanString(getMyApplication()));
 			}
-
-			ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<String>(this,
-					android.R.layout.simple_spinner_item, s);
-			spinnerAdapter.setDropDownViewResource(R.layout.support_simple_spinner_dropdown_item);
+			SpinnerAdapter spinnerAdapter = new SpinnerAdapter(this,
+					R.layout.spinner_item, s);
+//			android.R.layout.simple_spinner_dropdown_item
+			spinnerAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
 			getSpinner().setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 				@Override
 				public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -337,7 +353,6 @@ public abstract class SettingsBaseActivity extends ActionBarPreferenceActivity
 
 				}
 			});
-
 			getSpinner().setAdapter(spinnerAdapter);
 			getSpinner().setVisibility(View.VISIBLE);
 		}
@@ -345,6 +360,23 @@ public abstract class SettingsBaseActivity extends ActionBarPreferenceActivity
     }
 
 
+	class SpinnerAdapter extends ArrayAdapter<String>{
+
+
+		public SpinnerAdapter(Context context, int resource, List<String> objects) {
+			super(context, resource, objects);
+		}
+
+		@Override
+		public View getDropDownView(int position, View convertView, ViewGroup parent) {
+			View view = super.getDropDownView(position, convertView, parent);
+			if (!settings.isLightActionBar()){
+				TextView textView = (TextView) view.findViewById(android.R.id.text1);
+				textView.setBackgroundColor(getResources().getColor(R.color.actionbar_dark_color));
+			}
+			return view;
+		}
+	}
 	
 
 

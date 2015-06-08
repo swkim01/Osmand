@@ -8,7 +8,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import android.content.pm.ActivityInfo;
 import android.os.*;
 import android.support.v4.view.MenuItemCompat;
@@ -22,6 +21,7 @@ import net.osmand.OsmAndCollator;
 import net.osmand.PlatformUtil;
 import net.osmand.data.LatLon;
 import net.osmand.data.MapObject;
+import net.osmand.data.PointDescription;
 import net.osmand.plus.OsmAndConstants;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandSettings;
@@ -32,9 +32,8 @@ import net.osmand.plus.activities.OsmandListActivity;
 import net.osmand.plus.activities.search.SearchAddressFragment.AddressInformation;
 import net.osmand.plus.dialogs.DirectionsDialogs;
 import net.osmand.plus.dialogs.FavoriteDialogs;
-
 import org.apache.commons.logging.Log;
-
+import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.Dialog;
@@ -51,6 +50,7 @@ import android.widget.TextView.BufferType;
 import android.widget.TextView.OnEditorActionListener;
 
 
+@SuppressLint("NewApi")
 public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity {
 
 	private EditText searchText;
@@ -80,14 +80,8 @@ public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity
 	private static final int ADD_TO_FAVORITE = 6;
 	
 	
-	protected void setActionBarSettings() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-			getWindow().setUiOptions(ActivityInfo.UIOPTION_SPLIT_ACTION_BAR_WHEN_NARROW);
-		}
-		getSupportActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-		getSupportActionBar().setTitle(R.string.search_activity);
-		getSupportActionBar().setIcon(R.drawable.tab_search_address_icon);
+	private void separateMethod() {
+		getWindow().setUiOptions(ActivityInfo.UIOPTION_SPLIT_ACTION_BAR_WHEN_NARROW);
 	}
 	
 	@Override
@@ -510,12 +504,11 @@ public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		if (sequentialSearch) {
-			boolean light = ((OsmandApplication) getApplication()).getSettings().isLightActionBar();
+			OsmandApplication app  = ((OsmandApplication) getApplication());
 			MenuItem menuItem = menu.add(0, NAVIGATE_TO, 0, R.string.context_menu_item_directions_to);
 			MenuItemCompat.setShowAsAction(menuItem,
 					MenuItemCompat.SHOW_AS_ACTION_ALWAYS | MenuItemCompat.SHOW_AS_ACTION_WITH_TEXT);
-			menuItem = menuItem.setIcon(light ? R.drawable.ic_action_gdirections_light
-					: R.drawable.ic_action_gdirections_dark);
+			menuItem = menuItem.setIcon(app.getIconsCache().getIcon(R.drawable.ic_action_gdirections_dark));
 			menuItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
 				@Override
 				public boolean onMenuItemClick(MenuItem item) {
@@ -528,12 +521,12 @@ public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity
 				menuItem = menu.add(0, ADD_WAYPOINT, 0, R.string.context_menu_item_intermediate_point);
 				MenuItemCompat.setShowAsAction(menuItem,
 						MenuItemCompat.SHOW_AS_ACTION_ALWAYS | MenuItemCompat.SHOW_AS_ACTION_WITH_TEXT);
-				menuItem = menuItem.setIcon(light ? R.drawable.ic_action_flage_light : R.drawable.ic_action_flage_dark);
+				menuItem = menuItem.setIcon(app.getIconsCache().getIcon(R.drawable.ic_action_flage_dark));
 			} else {
 				menuItem = menu.add(0, ADD_WAYPOINT, 0, R.string.context_menu_item_destination_point);
 				MenuItemCompat.setShowAsAction(menuItem,
 						MenuItemCompat.SHOW_AS_ACTION_ALWAYS | MenuItemCompat.SHOW_AS_ACTION_WITH_TEXT);
-				menuItem = menuItem.setIcon(light ? R.drawable.ic_action_flag_light : R.drawable.ic_action_flag_dark);
+				menuItem = menuItem.setIcon(app.getIconsCache().getIcon( R.drawable.ic_action_flag_dark));
 			}
 			menuItem.setOnMenuItemClickListener(new OnMenuItemClickListener() {
 				@Override
@@ -542,10 +535,10 @@ public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity
 					return true;
 				}
 			});
-			menuItem = menu.add(0, SHOW_ON_MAP, 0, R.string.search_shown_on_map);
+			menuItem = menu.add(0, SHOW_ON_MAP, 0, R.string.shared_string_show_on_map);
 			MenuItemCompat.setShowAsAction(menuItem,
 					MenuItemCompat.SHOW_AS_ACTION_ALWAYS | MenuItemCompat.SHOW_AS_ACTION_WITH_TEXT);
-			menuItem = menuItem.setIcon(light ? R.drawable.ic_action_marker_light : R.drawable.ic_action_marker_dark);
+			menuItem = menuItem.setIcon(app.getIconsCache().getIcon(R.drawable.ic_action_marker_dark));
 
 			menuItem.setOnMenuItemClickListener(new OnMenuItemClickListener() {
 				@Override
@@ -555,10 +548,10 @@ public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity
 				}
 			});
 
-			menuItem = menu.add(0, ADD_TO_FAVORITE, 0, R.string.add_to_favourite);
+			menuItem = menu.add(0, ADD_TO_FAVORITE, 0, R.string.shared_string_add_to_favorites);
 			MenuItemCompat.setShowAsAction(menuItem,
 					MenuItemCompat.SHOW_AS_ACTION_ALWAYS | MenuItemCompat.SHOW_AS_ACTION_WITH_TEXT);
-			menuItem = menuItem.setIcon(light ? R.drawable.ic_action_fav_light : R.drawable.ic_action_fav_dark);
+			menuItem = menuItem.setIcon(app.getIconsCache().getIcon(R.drawable.ic_action_fav_dark));
 
 			menuItem.setOnMenuItemClickListener(new OnMenuItemClickListener() {
 				@Override
@@ -568,8 +561,8 @@ public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity
 				}
 			});
 		} else {
-			createMenuItem(menu, 1, R.string.default_buttons_ok, R.drawable.ic_action_ok_light,
-					R.drawable.ic_action_ok_dark, MenuItem.SHOW_AS_ACTION_ALWAYS);
+			createMenuItem(menu, 1, R.string.shared_string_ok,
+					R.drawable.ic_action_done, MenuItem.SHOW_AS_ACTION_ALWAYS);
 		}
 		return super.onCreateOptionsMenu(menu);
 	}
@@ -587,16 +580,16 @@ public abstract class SearchByNameAbstractActivity<T> extends OsmandListActivity
 				Dialog dlg = FavoriteDialogs.createAddFavouriteDialog(getActivity(), b);
 				dlg.show();
 				FavoriteDialogs.prepareAddFavouriteDialog(getActivity(), dlg, b, searchPoint.getLatitude(),
-						searchPoint.getLongitude(), ai.objectName);
+						searchPoint.getLongitude(), new PointDescription(PointDescription.POINT_TYPE_ADDRESS, ai.objectName));
 			} else if (mode == NAVIGATE_TO) {
 				DirectionsDialogs.directionsToDialogAndLaunchMap(getActivity(), searchPoint.getLatitude(),
-						searchPoint.getLongitude(), ai.historyName);
+						searchPoint.getLongitude(), ai.getHistoryName());
 			} else if (mode == ADD_WAYPOINT) {
 				DirectionsDialogs.addWaypointDialogAndLaunchMap(getActivity(), searchPoint.getLatitude(),
-						searchPoint.getLongitude(), ai.historyName);
+						searchPoint.getLongitude(), ai.getHistoryName());
 			} else if (mode == SHOW_ON_MAP) {
 				settings.setMapLocationToShow(searchPoint.getLatitude(), searchPoint.getLongitude(), ai.zoom,
-						ai.historyName);
+						ai.getHistoryName());
 				MapActivity.launchMapActivityMoveToTop(getActivity());
 			}
 		}

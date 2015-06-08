@@ -4,20 +4,21 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-
+import android.annotation.SuppressLint;
 import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.support.v4.view.MenuItemCompat;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v7.widget.Toolbar;
 import android.view.*;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.R;
+import net.osmand.plus.helpers.AndroidUiHelper;
 import android.os.Bundle;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 
-public class HelpActivity extends ActionBarActivity {
+public class HelpActivity extends OsmandActionBarActivity {
 	
 	private static final String FILE_ANDROID_ASSET_HELP = "file:///android_asset/help/";
 	public static final String URL = "url";
@@ -28,6 +29,7 @@ public class HelpActivity extends ActionBarActivity {
 	private static final int CLOSE = 4;
 	private WebView wv;
 	
+	@SuppressLint("NewApi")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		getMyApplication().applyTheme(this);
@@ -36,9 +38,8 @@ public class HelpActivity extends ActionBarActivity {
 			getWindow().setUiOptions(ActivityInfo.UIOPTION_SPLIT_ACTION_BAR_WHEN_NARROW);
 		}
 		super.onCreate(savedInstanceState);
-		wv = new WebView(this);
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-		String title = getString(R.string.help);
+
+		String title = getString(R.string.shared_string_help);
 		String url = "index.html";
 		if(getIntent() != null) {
 			String tl = getIntent().getStringExtra(TITLE);
@@ -51,7 +52,8 @@ public class HelpActivity extends ActionBarActivity {
 			}
 		}
 		getSupportActionBar().setTitle(title);
-		setContentView(wv);
+		setContentView(R.layout.help_activity);
+		wv = (WebView) findViewById(R.id.webView);
 		wv.setFocusable(true);
         wv.setFocusableInTouchMode(true);
 		wv.requestFocus(View.FOCUS_DOWN);
@@ -103,18 +105,23 @@ public class HelpActivity extends ActionBarActivity {
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
+		if (AndroidUiHelper.isOrientationPortrait(this)){
+			menu = getClearToolbar(true).getMenu();
+		} else {
+			getClearToolbar(false);
+		}
 		createMenuItem(menu, HOME, R.string.home, 
-				R.drawable.ic_action_home_light, R.drawable.ic_action_home_dark,
-				MenuItemCompat.SHOW_AS_ACTION_IF_ROOM );
-		createMenuItem(menu, BACK, R.string.previous_button,
-				0, 0, //R.drawable.ic_action_home_light, R.drawable.ic_action_home_dark,
-				MenuItemCompat.SHOW_AS_ACTION_IF_ROOM );
-		createMenuItem(menu, FORWARD, R.string.next_button,
-				0, 0, //R.drawable.ic_action_home_light, R.drawable.ic_action_home_dark,
-				MenuItemCompat.SHOW_AS_ACTION_IF_ROOM );
-		createMenuItem(menu, CLOSE, R.string.close, 
-				R.drawable.ic_action_ok_light, R.drawable.ic_action_ok_dark,
-				MenuItemCompat.SHOW_AS_ACTION_IF_ROOM );
+				R.drawable.ic_action_home_dark,
+				MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
+		createMenuItem(menu, BACK, R.string.shared_string_previous,
+				R.drawable.ic_action_undo_dark,
+				MenuItemCompat.SHOW_AS_ACTION_ALWAYS );
+		createMenuItem(menu, FORWARD, R.string.shared_string_next,
+				R.drawable.ic_action_redo_dark,
+				MenuItemCompat.SHOW_AS_ACTION_ALWAYS );
+		createMenuItem(menu, CLOSE, R.string.shared_string_close, 
+				R.drawable.ic_action_remove_dark,
+				MenuItemCompat.SHOW_AS_ACTION_ALWAYS );
 		return super.onCreateOptionsMenu(menu);
 	}
 
@@ -145,11 +152,10 @@ public class HelpActivity extends ActionBarActivity {
 		return false;
 	}
 	
-	public MenuItem createMenuItem(Menu m, int id, int titleRes, int iconLight, int iconDark, int menuItemType) {
-		int r = isLightActionBar() ? iconLight : iconDark;
+	public MenuItem createMenuItem(Menu m, int id, int titleRes, int iconDark, int menuItemType) {
 		MenuItem menuItem = m.add(0, id, 0, titleRes);
-		if (r != 0) {
-			menuItem.setIcon(r);
+		if (iconDark != 0) {
+			menuItem.setIcon(getMyApplication().getIconsCache().getIcon(iconDark));
 		}
 		MenuItemCompat.setShowAsAction(menuItem, menuItemType);
 		menuItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
@@ -161,7 +167,11 @@ public class HelpActivity extends ActionBarActivity {
 		return menuItem;
 	}
 	
-	public boolean isLightActionBar() {
-		return ((OsmandApplication) getApplication()).getSettings().isLightActionBar();
+	public Toolbar getClearToolbar(boolean visible) {
+		final Toolbar tb = (Toolbar) findViewById(R.id.bottomControls);
+		tb.setTitle(null);
+		tb.getMenu().clear();
+		tb.setVisibility(visible? View.VISIBLE : View.GONE);
+		return tb;
 	}
 }

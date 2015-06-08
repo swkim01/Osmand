@@ -25,26 +25,34 @@ import net.osmand.binary.BinaryMapIndexReader.MapIndex;
 import net.osmand.binary.BinaryMapIndexReader.TagValuePair;
 import net.osmand.data.QuadRect;
 import net.osmand.data.QuadTree;
+import net.osmand.util.Algorithms;
 import net.osmand.util.MapAlgorithms;
 import net.osmand.util.MapUtils;
 
 public class OsmandRegions {
 
+	private static final String MAP_TYPE = "region_map";
+//	regionSrtm = object.getMapIndex().getRule("region_srtm", null);
+//	regionWiki = object.getMapIndex().getRule("region_wiki", null);
+//	regionRoads = object.getMapIndex().getRule("region_roads", null);
+//	regionHillshade = object.getMapIndex().getRule("region_hillshade", null);
+	
 	private BinaryMapIndexReader reader;
 	Map<String, LinkedList<BinaryMapDataObject>> countriesByDownloadName = new HashMap<String, LinkedList<BinaryMapDataObject>>();
-	Map<String, String> downloadNamesToLocaleNames = new HashMap<String, String>();
-	Map<String, String> downloadNamesToLowercaseIndex = new HashMap<String, String>();
+	Map<String, String> fullNamesToLocaleNames = new HashMap<String, String>();
+	Map<String, String> fullMapNamesToDownloadNames = new HashMap<String, String>();
+	Map<String, String> downloadNamesToFullNames = new HashMap<String, String>();
+	Map<String, String> fullNamesToLowercaseIndex = new HashMap<String, String>();
 	QuadTree<String> quadTree = null ;
 
 
-	Integer prefixType = null;
+	Integer parentFullName = null;
+	Integer fullNameType = null;
 	Integer downloadNameType = null;
 	Integer nameEnType = null;
 	Integer nameType = null;
 	Integer nameLocaleType = null;
 	String locale = "en";
-	Integer suffixType;
-	Integer keyNameType;
 
 
 	public void prepareFile(String fileName) throws IOException {
@@ -69,8 +77,11 @@ public class OsmandRegions {
 	
 	public String getLocaleName(String downloadName) {
 		final String lc = downloadName.toLowerCase();
-		if(downloadNamesToLocaleNames.containsKey(lc)) {
-			return downloadNamesToLocaleNames.get(lc);
+		if (downloadNamesToFullNames.containsKey(lc)) {
+			String fullName = downloadNamesToFullNames.get(lc);
+			if (fullNamesToLocaleNames.containsKey(fullName)) {
+				return fullNamesToLocaleNames.get(fullName);
+			}
 		}
 		return downloadName.replace('_', ' ');
 	}
@@ -80,8 +91,11 @@ public class OsmandRegions {
 			return null;
 		}
 		final String lc = downloadName.toLowerCase();
-		if(downloadNamesToLowercaseIndex.containsKey(lc)) {
-			return downloadNamesToLowercaseIndex.get(lc);
+		if (downloadNamesToFullNames.containsKey(lc)) {
+			String fullName = downloadNamesToFullNames.get(lc);
+			if (fullNamesToLowercaseIndex.containsKey(fullName)) {
+				return fullNamesToLowercaseIndex.get(fullName);
+			}
 		}
 		return null;
 	}
@@ -106,25 +120,20 @@ public class OsmandRegions {
 		return locName;
 	}
 
-	public String getPrefix(BinaryMapDataObject o) {
-		if(prefixType == null) {
+	public String getParentFullName(BinaryMapDataObject o) {
+		if(parentFullName == null) {
 			return null;
 		}
-		return o.getNameByType(prefixType);
+		return o.getNameByType(parentFullName);
 	}
 
-	public String getSuffix(BinaryMapDataObject o) {
-		if(suffixType == null) {
-			return null;
-		}
-		return o.getNameByType(suffixType);
-	}
 	
-	public String getKeyName(BinaryMapDataObject o) {
-		if(keyNameType == null) {
+	
+	public String getFullName(BinaryMapDataObject o) {
+		if(fullNameType == null) {
 			return null;
 		}
-		return o.getNameByType(keyNameType);
+		return o.getNameByType(fullNameType);
 	}
 
 	public boolean isInitialized(){
@@ -179,7 +188,7 @@ public class OsmandRegions {
 		return queryNoInit(tile31x, tile31y);
 	}
 
-	private List<BinaryMapDataObject> queryNoInit(final int tile31x, final int tile31y) throws IOException {
+	private synchronized List<BinaryMapDataObject> queryNoInit(final int tile31x, final int tile31y) throws IOException {
 		final List<BinaryMapDataObject> result = new ArrayList<BinaryMapDataObject>();
 		BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> sr = BinaryMapIndexReader.buildSearchRequest(tile31x, tile31x, tile31y, tile31y,
 				5, new BinaryMapIndexReader.SearchFilter() {
@@ -215,7 +224,7 @@ public class OsmandRegions {
 	}
 
 
-	public List<BinaryMapDataObject> queryBbox(int lx, int rx, int ty, int by) throws IOException {
+	public synchronized List<BinaryMapDataObject> queryBbox(int lx, int rx, int ty, int by) throws IOException {
 		final List<BinaryMapDataObject> result = new ArrayList<BinaryMapDataObject>();
 		BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> sr = BinaryMapIndexReader.buildSearchRequest(lx, rx, ty, by,
 				5, new BinaryMapIndexReader.SearchFilter() {
@@ -251,50 +260,63 @@ public class OsmandRegions {
 		this.locale = locale;
 	}
 	
+	public String getMapDownloadType(String fullname) {
+		return fullMapNamesToDownloadNames.get(fullname);
+	}
+	
 	public void initLocaleNames() throws IOException {
 //		final Collator clt = OsmAndCollator.primaryCollator();
-		final Map<String, BinaryMapDataObject> downloadNamesPrefix = new LinkedHashMap<String, BinaryMapDataObject>();
+		final Map<String, String> parentRelations = new LinkedHashMap<String, String>();
 		final ResultMatcher<BinaryMapDataObject> resultMatcher = new ResultMatcher<BinaryMapDataObject>() {
 			
 			@Override
 			public boolean publish(BinaryMapDataObject object) {
 				initTypes(object);
-				String downloadName = object.getNameByType(downloadNameType).toLowerCase();
-				String prefix = getPrefix(object);
-				String keyName = getKeyName(object);
-				if(prefix == null) {
-					prefix = "";
-				}
-				String locName = getLocaleName(object);
-				if(locName != null && locName.length() > 0){
-					String kn = keyName.toLowerCase();
-					if(prefix.length() > 0) {
-						downloadNamesPrefix.put(downloadName, object);
-						kn = prefix.toLowerCase() +"_" + keyName;
+				int[] types = object.getTypes();
+				for(int i = 0; i < types.length; i++ ) {
+					TagValuePair tp = object.getMapIndex().decodeType(types[i]);
+					if("boundary".equals(tp.value)) {
+						return false;
 					}
-					downloadNamesToLocaleNames.put(downloadName, locName);
-					downloadNamesToLocaleNames.put(kn, locName);
+				}
+				String parentFullName = getParentFullName(object);
+				String fullName = getFullName(object);
+				if(!Algorithms.isEmpty(parentFullName)) {
+					parentRelations.put(fullName, parentFullName);
+				}				
+				String locName = getLocaleName(object);
+				if(!Algorithms.isEmpty(locName)){
+					fullNamesToLocaleNames.put(fullName, locName);
 				}
 				MapIndex mi = object.getMapIndex();
 				TIntObjectIterator<String> it = object.getObjectNames().iterator();
-				
 				StringBuilder ind = new StringBuilder();
-				String pr = getDownloadNameIndexLowercase(prefix);
-				ind.append(pr == null ? prefix.toLowerCase() : pr.toLowerCase()).append(" ");
 				while(it.hasNext()) {
 					it.advance();
 					TagValuePair tp = mi.decodeType(it.key());
-					if(tp.tag.startsWith("name")) {
+					if (tp.tag.equals("key_name") && Algorithms.isEmpty(locName)) {
+						fullNamesToLocaleNames.put(fullName,
+								Algorithms.capitalizeFirstLetterAndLowercase(it.value().replace('_', '-')));
+					}
+					if(tp.tag.startsWith("name") || tp.tag.equals("key_name")) {
 						final String vl = it.value().toLowerCase();
 //						if (!CollatorStringMatcher.ccontains(clt, ind.toString(), vl)) {
 						if(ind.indexOf(vl) == -1) {
 							ind.append(" ").append(vl);
 						}
-					}							
+					}	
 				}
-				downloadNamesToLowercaseIndex.put(downloadName, ind.toString());
+				fullNamesToLowercaseIndex.put(fullName, ind.toString());
+				String downloadName = getDownloadName(object);
+				if(downloadName != null) {
+					downloadNamesToFullNames.put(downloadName, fullName);
+					if(isDownloadOfType(object, MAP_TYPE)) {
+						fullMapNamesToDownloadNames.put(fullName, downloadName);
+					}
+				}
 				return false;
 			}
+
 
 			@Override
 			public boolean isCancelled() {
@@ -303,17 +325,38 @@ public class OsmandRegions {
 		};
 		iterateOverAllObjects(resultMatcher);
 		// post process download names
-		for(Map.Entry<String, BinaryMapDataObject> e : downloadNamesPrefix.entrySet()) {
-			String downloadName = e.getKey();
-			BinaryMapDataObject o = e.getValue();
-			String prefix = getPrefix(o).toLowerCase();
-			String locPrefix = downloadNamesToLocaleNames.get(prefix);
-			String locName = downloadNamesToLocaleNames.get(downloadName);
-			downloadNamesToLocaleNames.put(downloadName, locPrefix + " " + locName);
-			String index = downloadNamesToLowercaseIndex.get(downloadName);
-			downloadNamesToLowercaseIndex.put(downloadName, index + " " + prefix + " " + locPrefix.toLowerCase());
+		for(Map.Entry<String, String> e : parentRelations.entrySet()) {
+			String fullName = e.getKey();
+			String parentFullName = e.getValue();
+			String parentParentFulName = parentRelations.get(parentFullName);
+			if(!Algorithms.isEmpty(parentFullName) && 
+					!Algorithms.isEmpty(parentParentFulName)) {
+				if(parentParentFulName.contains("russia") || parentParentFulName.contains("japan")) {
+					parentFullName = parentParentFulName;
+				}
+				String locPrefix = fullNamesToLocaleNames.get(parentFullName);
+				String locName = fullNamesToLocaleNames.get(fullName);
+				if(locPrefix == null || locName == null) {
+					throw new IllegalStateException("There is no prefix registered for " + fullName + " (" + parentFullName + ") ");
+				}
+				fullNamesToLocaleNames.put(fullName, locPrefix + " " + locName);
+				String index = fullNamesToLowercaseIndex.get(fullName);
+				String prindex = fullNamesToLowercaseIndex.get(parentFullName);
+				fullNamesToLowercaseIndex.put(fullName, index + " " + prindex);	
+			}
 		}
 		
+	}
+	
+	private boolean isDownloadOfType(BinaryMapDataObject object, String type) {
+		int[] addtypes = object.getAdditionalTypes();
+		for(int i = 0; i < addtypes.length; i++) {
+			TagValuePair tp = object.getMapIndex().decodeType(addtypes[i]);
+			if(type.equals(tp.tag) && "yes".equals(tp.value)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 
@@ -365,7 +408,7 @@ public class OsmandRegions {
 		iterateOverAllObjects(resultMatcher);
 	}
 
-	private void iterateOverAllObjects(final ResultMatcher<BinaryMapDataObject> resultMatcher) throws IOException {
+	private synchronized void iterateOverAllObjects(final ResultMatcher<BinaryMapDataObject> resultMatcher) throws IOException {
 		BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> sr = BinaryMapIndexReader.buildSearchRequest(0, Integer.MAX_VALUE, 0, Integer.MAX_VALUE,
 				5, new BinaryMapIndexReader.SearchFilter() {
 					@Override
@@ -385,9 +428,9 @@ public class OsmandRegions {
 			nameType = object.getMapIndex().getRule("name", null);
 			nameEnType = object.getMapIndex().getRule("name:en", null);
 			nameLocaleType = object.getMapIndex().getRule("name:" + locale, null);
-			prefixType = object.getMapIndex().getRule("region_prefix", null);
-			suffixType = object.getMapIndex().getRule("region_suffix", null);
-			keyNameType = object.getMapIndex().getRule("key_name", null);
+			parentFullName = object.getMapIndex().getRule("region_parent_name", null);
+			fullNameType = object.getMapIndex().getRule("region_full_name", null);
+			
 			if (downloadNameType == null || nameType == null) {
 				throw new IllegalStateException();
 			}

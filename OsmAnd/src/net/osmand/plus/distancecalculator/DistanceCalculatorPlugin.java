@@ -14,6 +14,7 @@ import net.osmand.CallbackWithObject;
 import net.osmand.IndexConstants;
 import net.osmand.access.AccessibleToast;
 import net.osmand.data.LatLon;
+import net.osmand.data.PointDescription;
 import net.osmand.data.RotatedTileBox;
 import net.osmand.plus.ApplicationMode;
 import net.osmand.plus.ContextMenuAdapter;
@@ -37,6 +38,7 @@ import net.osmand.plus.views.OsmandMapLayer;
 import net.osmand.plus.views.OsmandMapTileView;
 import net.osmand.plus.views.mapwidgets.TextInfoWidget;
 import net.osmand.util.MapUtils;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.app.ProgressDialog;
@@ -95,7 +97,7 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 	}
 
 	@Override
-	public boolean init(OsmandApplication app) {
+	public boolean init(OsmandApplication app, Activity activity) {
 		return true;
 	}
 
@@ -114,9 +116,9 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 	private void registerWidget(MapActivity activity) {
 		MapInfoLayer mapInfoLayer = activity.getMapLayers().getMapInfoLayer();
 		if (mapInfoLayer != null ) {
-			distanceControl = createDistanceControl(activity, mapInfoLayer.getPaintText(), mapInfoLayer.getPaintSubText());
-			mapInfoLayer.getMapInfoControls().registerSideWidget(distanceControl,
-					R.drawable.widget_distance, R.drawable.widget_distance, R.string.map_widget_distancemeasurement, "distance.measurement", false, 21);
+			distanceControl = createDistanceControl(activity);
+			mapInfoLayer.registerSideWidget(distanceControl,
+					R.drawable.ic_action_ruler_dark, R.string.map_widget_distancemeasurement, "distance.measurement", false, 21);
 			mapInfoLayer.recreateControls();
 			updateText();
 		}
@@ -127,7 +129,7 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 			String ds = distance;
 			if (ds == null) {
 				if(distanceMeasurementMode == 0) {
-					distanceControl.setText(app.getString(R.string.dist_control_start), "");
+					distanceControl.setText(app.getString(R.string.shared_string_control_start), "");
 				} else {
 					distanceControl.setText("0", ""); //$NON-NLS-1$
 				}
@@ -152,7 +154,7 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 		if(measurementPoints.size() > 0) {
 			list.add(R.string.distance_measurement_finish_subtrack);
 			list.add(R.string.distance_measurement_clear_route);
-			list.add(R.string.distance_measurement_save_gpx);
+			list.add(R.string.shared_string_save_as_gpx);
 		}
 		list.add(R.string.distance_measurement_load_gpx);
 		String[] items = new String[list.size()];
@@ -173,9 +175,10 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 					measurementPoints.add(new LinkedList<GPXUtilities.WptPt>());
 				} else if (id == R.string.distance_measurement_clear_route) {
 					distanceMeasurementMode = 0;
+					originalGPX = null;
 					measurementPoints.clear();
 					calculateDistance();
-				} else if (id == R.string.distance_measurement_save_gpx) {
+				} else if (id == R.string.shared_string_save_as_gpx) {
 					saveGpx(activity);
 				} else if (id == R.string.distance_measurement_load_gpx) {
 					loadGpx(activity);
@@ -232,13 +235,26 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 		final File dir = app.getAppPath(IndexConstants.GPX_INDEX_DIR);
 		LinearLayout ll = new LinearLayout(activity);
 		ll.setOrientation(LinearLayout.VERTICAL);
-		ll.setPadding(5, 5, 5, 5);
+		ll.setPadding(7, 7, 7, 7);
 		final TextView tv = new TextView(activity);
 		tv.setText("");
+		
 		tv.setTextColor(Color.RED);
 		ll.addView(tv);
 		final EditText editText = new EditText(activity);
 		editText.setHint(R.string.gpx_file_name);
+		if(originalGPX != null && originalGPX.path != null){
+			String p = originalGPX.path;
+			int li = p.lastIndexOf('/');
+			if(li >= 0) {
+				p = p.substring(li + 1);
+			}
+			int pi = p.lastIndexOf('.');
+			if(pi >= 0) {
+				p = p.substring(0, pi);
+			}
+			editText.setText(p);
+		}
 		editText.addTextChangedListener(new TextWatcher() {
 			
 			@Override
@@ -265,7 +281,7 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 		});
 		ll.addView(editText);
 		b.setView(ll);
-		b.setPositiveButton(R.string.default_buttons_save, new DialogInterface.OnClickListener() {
+		b.setPositiveButton(R.string.shared_string_save, new DialogInterface.OnClickListener() {
 
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
@@ -276,7 +292,7 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 				saveGpx(activity, newName);
 			}
 		});
-		b.setNegativeButton(R.string.default_buttons_cancel, null);
+		b.setNegativeButton(R.string.shared_string_cancel, null);
 		b.show();
 	}
 	
@@ -289,27 +305,27 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 			protected String doInBackground(Void... params) {
 				toSave = new File(app.getAppPath(IndexConstants.GPX_INDEX_DIR), fileNameSave);
 				GPXFile gpx;
-				boolean saveTrackToRte = false;
-				if(originalGPX != null) {
+				boolean saveTrackToRte = measurementPoints.size() <= 1;
+				if (originalGPX != null) {
 					gpx = originalGPX;
 					saveTrackToRte = originalGPX.routes.size() > 0 && originalGPX.tracks.size() == 0;
 					gpx.tracks.clear();
 					gpx.routes.clear();
 					gpx.points.clear();
 				} else {
-					gpx = new GPXFile(); 
+					gpx = new GPXFile();
 				}
-				for(int i = 0; i<measurementPoints.size(); i++) {
+				for (int i = 0; i < measurementPoints.size(); i++) {
 					LinkedList<WptPt> lt = measurementPoints.get(i);
-					if(lt.size() == 1) {
+					if (lt.size() == 1) {
 						gpx.points.add(lt.getFirst());
-					} else if(lt.size() > 1) {
-						if(saveTrackToRte) {
+					} else if (lt.size() > 1) {
+						if (saveTrackToRte) {
 							Route rt = new Route();
 							gpx.routes.add(rt);
 							rt.points.addAll(lt);
 						} else {
-							if(gpx.tracks.size() == 0) {
+							if (gpx.tracks.size() == 0) {
 								gpx.tracks.add(new Track());
 							}
 							Track ts = gpx.tracks.get(gpx.tracks.size() - 1);
@@ -353,29 +369,29 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 		if(pref.get()) {
 			Builder builder = new AlertDialog.Builder(ctx);
 			builder.setMessage(R.string.use_distance_measurement_help);
-			builder.setNegativeButton(R.string.default_buttons_do_not_show_again, new OnClickListener() {
+			builder.setNegativeButton(R.string.shared_string_do_not_show_again, new OnClickListener() {
 				
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					pref.set(false);
 				}
 			});
-			builder.setPositiveButton(R.string.default_buttons_ok, null);
+			builder.setPositiveButton(R.string.shared_string_ok, null);
 			
 			builder.show();
 		}
 		
 	}
 	
-	private TextInfoWidget createDistanceControl(final MapActivity activity, Paint paintText, Paint paintSubText) {
-		final TextInfoWidget distanceControl = new TextInfoWidget(activity, 0, paintText, paintSubText);
+	private TextInfoWidget createDistanceControl(final MapActivity activity) {
+		final TextInfoWidget distanceControl = new TextInfoWidget(activity);
 		distanceControl.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				showDialog(activity);
 			}
 		});
-		distanceControl.setImageDrawable(app.getResources().getDrawable(R.drawable.widget_distance));
+		distanceControl.setIcons(R.drawable.widget_distance_day, R.drawable.widget_distance_night);
 		return distanceControl;
 	}
 
@@ -422,7 +438,7 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 			bitmapPaint.setFilterBitmap(true);
 			path = new Path();
 			
-			int distanceColor = view.getResources().getColor(R.color.distance_color);
+			int distanceColor = view.getResources().getColor(R.color.color_distance);
 			paint = new Paint();
 			paint.setStyle(Style.STROKE);
 			paint.setStrokeWidth(7 * view.getDensity());
@@ -600,15 +616,14 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 						return true;
 					}
 				};
-				adapter.item(R.string.delete_point).icons(R.drawable.ic_action_delete_dark, 
-						R.drawable.ic_action_delete_light).listen(listener).reg();
+				adapter.item(R.string.delete_point).iconColor(R.drawable.ic_action_delete_dark).listen(listener).reg();
 			}
 		}
 
 		@Override
 		public String getObjectDescription(Object o) {
 			if(o instanceof WptPt) {
-				String desc = getObjectName(o); 
+				PointDescription desc = getObjectName(o); 
 				List<String> l = new ArrayList<String>();
 				if(!Double.isNaN(((WptPt) o).ele)) {
 					l.add(app.getString(R.string.plugin_distance_point_ele) + " "+ OsmAndFormatter.getFormattedDistance((float) ((WptPt) o).ele, app)); 
@@ -625,21 +640,37 @@ public class DistanceCalculatorPlugin extends OsmandPlugin {
 					java.text.DateFormat timeFormat = android.text.format.DateFormat.getTimeFormat(app);
 					l.add(app.getString(R.string.plugin_distance_point_time) + " "+ dateFormat.format(date) + " " + timeFormat.format(date)); 
 				}
-				return desc + " " + l;
+				return desc.getName() + " " + l;
 			}
 			return null;
 		}
 
 		@Override
-		public String getObjectName(Object o) {
+		public PointDescription getObjectName(Object o) {
 			if(o instanceof WptPt) {
 				if(((WptPt) o).desc == null) {
-					return app.getString(R.string.plugin_distance_point); 
+					return new PointDescription(PointDescription.POINT_TYPE_MARKER, app.getString(R.string.plugin_distance_point));
 				}
-				return ((WptPt) o).desc;
+				return new PointDescription(PointDescription.POINT_TYPE_MARKER, ((WptPt) o).desc );
 			}
 			return null;
 		}
 
+	}
+	
+
+	@Override
+	public Class<? extends Activity> getSettingsActivity() {
+		return null;
+	}
+	
+	@Override
+	public int getAssetResourceName() {
+		return R.drawable.distance_calculator;
+	}
+	
+	@Override
+	public int getLogoResourceId() {
+		return R.drawable.ic_action_marker_dark;
 	}
 }

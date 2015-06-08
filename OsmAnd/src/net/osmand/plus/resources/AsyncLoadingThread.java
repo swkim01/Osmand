@@ -1,7 +1,10 @@
 package net.osmand.plus.resources;
 
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
@@ -14,6 +17,8 @@ import net.osmand.map.ITileSource;
 import net.osmand.map.MapTileDownloader.DownloadRequest;
 import net.osmand.map.MapTileDownloader.IMapDownloaderCallback;
 import net.osmand.plus.BusyIndicator;
+import net.osmand.plus.SQLiteTileSource;
+import net.osmand.util.Algorithms;
 
 import org.apache.commons.logging.Log;
 
@@ -102,7 +107,7 @@ public class AsyncLoadingThread extends Thread {
 						if (!mapLoaded) {
 							MapLoadRequest r = (MapLoadRequest) req;
 							resourceManger.getRenderer().loadMap(r.tileBox, resourceManger.getMapTileDownloader().getDownloaderCallbacks());
-							mapLoaded = true;
+							mapLoaded = !resourceManger.getRenderer().wasInterrupted();
 						}
 					}
 				}
@@ -153,7 +158,7 @@ public class AsyncLoadingThread extends Thread {
 		resourceManger.getMapTileDownloader().requestToDownload(req);
 	}
 
-	protected static class TileLoadDownloadRequest extends DownloadRequest {
+	public static class TileLoadDownloadRequest extends DownloadRequest {
 
 		public final String tileId;
 		public final File dirWithTiles;
@@ -166,6 +171,30 @@ public class AsyncLoadingThread extends Thread {
 			this.tileSource = source;
 			this.tileId = tileId;
 		}
+		
+		public void saveTile(InputStream inputStream) throws IOException {
+			if(tileSource instanceof SQLiteTileSource){
+				ByteArrayOutputStream stream = null;
+				try {
+					stream = new ByteArrayOutputStream(inputStream.available());
+					Algorithms.streamCopy(inputStream, stream);
+					stream.flush();
+
+					try {
+						((SQLiteTileSource) tileSource).insertImage(xTile, yTile, zoom, stream.toByteArray());
+					} catch (IOException e) {
+						log.warn("Tile x="+xTile +" y="+ yTile+" z="+ zoom+" couldn't be read", e);  //$NON-NLS-1$//$NON-NLS-2$
+					}
+				} finally {
+					Algorithms.closeStream(inputStream);
+					Algorithms.closeStream(stream);
+				}				
+			}
+			else {
+				super.saveTile(inputStream);
+			}
+		}
+
 	}
 
 	protected class MapObjectLoadRequest<T> implements ResultMatcher<T> {

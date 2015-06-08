@@ -3,7 +3,7 @@
 											   android:layout_width="match_parent"
 											   android:layout_height="match_parent"
 											   android:id="@+id/main_scroll"
-											   android:background="@color/dashboard_background">
+											   android:background="?attr/expandable_list_background">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -11,7 +11,6 @@
         android:orientation="vertical">
 
 		<fragment
-				xmlns:android="http://schemas.android.com/apk/res/android"
 				android:id="@+id/mapFragment"
 				android:layout_marginRight="-3dp"
 				android:layout_marginLeft="-3dp"
@@ -32,16 +31,30 @@
 						  android:layout_width="match_parent"
 						  android:layout_height="wrap_content"/>
 
+			<!--<fragment-->
+					<!--xmlns:android="http://schemas.android.com/apk/res/android"-->
+					<!--android:id="@+id/ParkingFragment"-->
+					<!--android:name="net.osmand.plus.dashboard.DashParkingFragment"-->
+					<!--android:layout_marginTop="@dimen/dashCardMargin"-->
+					<!--android:layout_width="match_parent"-->
+					<!--android:layout_height="wrap_content"/>-->
+
 			<fragment
-					xmlns:android="http://schemas.android.com/apk/res/android"
 					android:id="@+id/SearchFragment"
 					android:name="net.osmand.plus.dashboard.DashSearchFragment"
                     android:layout_marginTop="@dimen/dashCardMargin"
 					android:layout_width="match_parent"
 					android:layout_height="wrap_content"/>
 
+			
 			<fragment
-					xmlns:android="http://schemas.android.com/apk/res/android"
+					android:id="@+id/RecentsFragment"
+					android:name="net.osmand.plus.dashboard.DashRecentsFragment"
+                    android:layout_marginTop="@dimen/dashCardMargin"
+                    android:layout_width="match_parent"
+					android:layout_height="wrap_content"/>
+			
+			<fragment
 					android:id="@+id/FavoritesFragment"
 					android:name="net.osmand.plus.dashboard.DashFavoritesFragment"
                     android:layout_marginTop="@dimen/dashCardMargin"
@@ -49,10 +62,17 @@
 					android:layout_height="wrap_content"/>
 
 			<fragment
-					xmlns:android="http://schemas.android.com/apk/res/android"
 					android:id="@+id/NotesFragment"
-					android:name="net.osmand.plus.dashboard.DashAudioVideoNotesFragment"
+					android:name="net.osmand.plus.audionotes.DashAudioVideoNotesFragment"
                     android:layout_marginTop="@dimen/dashCardMargin"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"/>
+
+			<fragment
+					xmlns:android="http://schemas.android.com/apk/res/android"
+					android:id="@+id/TracksFragment"
+					android:name="net.osmand.plus.monitoring.DashTrackFragment"
+					android:layout_marginTop="@dimen/dashCardMargin"
 					android:layout_width="match_parent"
 					android:layout_height="wrap_content"/>
 
@@ -63,8 +83,8 @@
 					<!--android:layout_width="match_parent"-->
 					<!--android:layout_height="wrap_content"/>-->
 
+
 			<fragment
-					xmlns:android="http://schemas.android.com/apk/res/android"
 					android:id="@+id/UpdateFragment"
 					android:name="net.osmand.plus.dashboard.DashUpdatesFragment"
                     android:layout_marginTop="@dimen/dashCardMargin"
@@ -72,7 +92,6 @@
 					android:layout_height="wrap_content"/>
 
 			<fragment
-					xmlns:android="http://schemas.android.com/apk/res/android"
 					android:id="@+id/PluginFragment"
 					android:name="net.osmand.plus.dashboard.DashPluginsFragment"
                     android:layout_marginTop="@dimen/dashCardMargin"
@@ -82,7 +101,7 @@
 
 		<!--To make sure that floating button is always visible-->
 	<View	android:layout_width="match_parent"
-			android:layout_height="76dp"
+			android:layout_height="@dimen/dashFABMargin"
 			android:orientation="vertical"/>
 
     </LinearLayout>

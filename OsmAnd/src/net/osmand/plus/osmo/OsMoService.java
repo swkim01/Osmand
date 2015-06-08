@@ -144,6 +144,10 @@ public class OsMoService implements OsMoReactor {
 		return thread == null || !thread.isConnected() ? System.currentTimeMillis() : thread.getConnectionTime(); 
 	}
 	
+	protected List<OsMoReactor> getListReactors() {
+		return listReactors;
+	}
+	
 	
 	public String getLastRegistrationError() {
 		return lastRegistrationError;
@@ -156,7 +160,7 @@ public class OsMoService implements OsMoReactor {
 			}
 			thread.stopConnection();
 		}
-		thread = new OsMoThread(this, listReactors);
+		thread = new OsMoThread(this);
 		enabled = true;
 		return true;
 	}
@@ -175,12 +179,18 @@ public class OsMoService implements OsMoReactor {
 	
 	public void registerReactor(OsMoReactor reactor) {
 		if(!listReactors.contains(reactor)) {
-			listReactors.add(reactor);
+			ArrayList<OsMoReactor> lst = new ArrayList<OsMoReactor>(listReactors);
+			lst.add(reactor);
+			listReactors = lst;
 		}
 	}
 
 	public void removeReactor(OsMoReactor s) {
-		listReactors.remove(s);
+		if(listReactors.contains(s)) {
+			ArrayList<OsMoReactor> lst = new ArrayList<OsMoReactor>(listReactors);
+			lst.remove(s);
+			listReactors = lst;
+		}
 	}
 	
 
@@ -403,14 +413,14 @@ public class OsMoService implements OsMoReactor {
 	protected void showRegisterAgain(OsMoGroupsActivity ga, String msg) {
 		Builder bld = new AlertDialog.Builder(ga);
 		bld.setMessage(msg);
-		bld.setPositiveButton(R.string.default_buttons_ok, new OnClickListener() {
+		bld.setPositiveButton(R.string.shared_string_ok, new OnClickListener() {
 			
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
 				registerAsync();
 			}
 		});
-		bld.setNegativeButton(R.string.default_buttons_cancel, null);
+		bld.setNegativeButton(R.string.shared_string_cancel, null);
 		
 	}
 

@@ -76,7 +76,7 @@ public class SherpafyStageFragment extends Fragment {
 			if(customization.isStageVisited(stage.getOrder())) {
 				text = R.string.stage_is_completed;
 			}
-			((TourViewActivity) getActivity()).createMenuItem(menu, START, text, 0, 0,
+			((TourViewActivity) getActivity()).createMenuItem(menu, START, text, 0,
 					MenuItemCompat.SHOW_AS_ACTION_IF_ROOM | MenuItemCompat.SHOW_AS_ACTION_WITH_TEXT,
 					new MenuItem.OnMenuItemClickListener() {
 						@Override
@@ -85,7 +85,7 @@ public class SherpafyStageFragment extends Fragment {
 						}
 					});
 			if (customization.isStageVisited(stage.getOrder()) && customization.getNextAvailableStage(tour) != null) {
-				((TourViewActivity) getActivity()).createMenuItem(menu, NEXT_STAGE, R.string.next_stage, 0, 0,
+				((TourViewActivity) getActivity()).createMenuItem(menu, NEXT_STAGE, R.string.next_stage, 0,
 						MenuItemCompat.SHOW_AS_ACTION_IF_ROOM | MenuItemCompat.SHOW_AS_ACTION_WITH_TEXT,
 						new MenuItem.OnMenuItemClickListener() {
 							@Override
@@ -115,7 +115,7 @@ public class SherpafyStageFragment extends Fragment {
 	
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-		view = inflater.inflate(R.layout.tab_content, container, false);
+		view = inflater.inflate(R.layout.download, container, false);
 		tabHost = (TabHost) view.findViewById(android.R.id.tabhost);
 		tabHost.setup();
 

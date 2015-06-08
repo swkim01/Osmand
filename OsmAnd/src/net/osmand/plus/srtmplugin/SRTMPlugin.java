@@ -1,5 +1,6 @@
 package net.osmand.plus.srtmplugin;
 
+import android.app.Activity;
 import android.widget.ArrayAdapter;
 import net.osmand.plus.ApplicationMode;
 import net.osmand.plus.ContextMenuAdapter;
@@ -26,24 +27,20 @@ public class SRTMPlugin extends OsmandPlugin {
 		return paid ? ID : FREE_ID;
 	}
 
-	public SRTMPlugin(OsmandApplication app, boolean paid) {
+	public SRTMPlugin(OsmandApplication app) {
 		this.app = app;
-		this.paid = paid;
-		OsmandSettings settings = app.getSettings();
-		CommonPreference<String> pref = settings.getCustomRenderProperty("contourLines");
-		if(pref.get().equals("")) {
-			for(ApplicationMode m : ApplicationMode.allPossibleValues()) {
-				if(pref.getModeValue(m).equals("")) {
-					pref.setModeValue(m, "13");
-				}
-			}
-		}
-
 	}
 	
-	public boolean isPaid() {
-		return paid;
+	@Override
+	public int getLogoResourceId() {
+		return R.drawable.ic_plugin_srtm;
 	}
+	
+	@Override
+	public int getAssetResourceName() {
+		return R.drawable.contour_lines;
+	}
+	
 
 	@Override
 	public String getDescription() {
@@ -56,8 +53,17 @@ public class SRTMPlugin extends OsmandPlugin {
 	}
 
 	@Override
-	public boolean init(final OsmandApplication app) {
+	public boolean init(final OsmandApplication app, Activity activity) {
 		HILLSHADE = app.getSettings().registerBooleanPreference("hillshade_layer", true);
+		OsmandSettings settings = app.getSettings();
+		CommonPreference<String> pref = settings.getCustomRenderProperty("contourLines");
+		if(pref.get().equals("")) {
+			for(ApplicationMode m : ApplicationMode.allPossibleValues()) {
+				if(pref.getModeValue(m).equals("")) {
+					pref.setModeValue(m, "13");
+				}
+			}
+		}
 		return true;
 	}
 
@@ -104,11 +110,16 @@ public class SRTMPlugin extends OsmandPlugin {
 			}
 		};
 		adapter.item(R.string.layer_hillshade).selected(HILLSHADE.get()? 1 : 0)
-			.icons( R.drawable.ic_action_hillshade_dark, R.drawable.ic_action_hillshade_light).listen(listener).position(13).layout(R.layout.drawer_list_item).reg();
+			.iconColor( R.drawable.ic_action_hillshade_dark).listen(listener).position(13).layout(R.layout.drawer_list_item).reg();
 	}
 	
 	@Override
 	public void disable(OsmandApplication app) {
+	}
+	
+	@Override
+	public Class<? extends Activity> getSettingsActivity() {
+		return null;
 	}
 
 }

@@ -103,8 +103,7 @@ public class OsmAndLocationProvider implements SensorEventListener {
 	private float[] mRotationM =  new float[9];
 	private OsmandPreference<Boolean> USE_MAGNETIC_FIELD_SENSOR_COMPASS;
 	private OsmandPreference<Boolean> USE_FILTER_FOR_COMPASS;
-
-
+	private static final long AGPS_TO_REDOWNLOAD  = 16 * 60 * 60 * 1000; // 16 hours
 
 
 	public class SimulationProvider {
@@ -221,6 +220,14 @@ public class OsmAndLocationProvider implements SensorEventListener {
 
 	public void resumeAllUpdates() {
 		final LocationManager service = (LocationManager) app.getSystemService(Context.LOCATION_SERVICE);
+		if(app.getSettings().isInternetConnectionAvailable()) {
+			if(System.currentTimeMillis() - app.getSettings().AGPS_DATA_LAST_TIME_DOWNLOADED.get() > AGPS_TO_REDOWNLOAD) {
+				//force an updated check for internet connectivity here before destroying A-GPS-data
+				if(app.getSettings().isInternetConnectionAvailable(true)) {
+					redownloadAGPS();
+				}
+			}
+		}
 		service.addGpsStatusListener(getGpsStatusListener(service));
 		try {
 			service.requestLocationUpdates(LocationManager.GPS_PROVIDER, GPS_TIMEOUT_REQUEST, GPS_DIST_REQUEST, gpsListener);
@@ -230,6 +237,9 @@ public class OsmAndLocationProvider implements SensorEventListener {
 		// try to always ask for network provide : it is faster way to find location
 		
 		List<String> providers = service.getProviders(true);
+		if(providers == null) {
+			return;
+		}
 		for (String provider : providers) {
 			if (provider == null || provider.equals(LocationManager.GPS_PROVIDER)) {
 				continue;
@@ -242,6 +252,20 @@ public class OsmAndLocationProvider implements SensorEventListener {
 				Log.d(PlatformUtil.TAG, provider + " location provider not available"); //$NON-NLS-1$
 			}
 		}
+	}
+	
+	public void redownloadAGPS() {
+		try {
+			final LocationManager service = (LocationManager) app.getSystemService(Context.LOCATION_SERVICE);
+			service.sendExtraCommand(LocationManager.GPS_PROVIDER,"delete_aiding_data", null);
+			Bundle bundle = new Bundle();
+			service.sendExtraCommand("gps", "force_xtra_injection", bundle);
+			service.sendExtraCommand("gps", "force_time_injection", bundle);
+			app.getSettings().AGPS_DATA_LAST_TIME_DOWNLOADED.set(System.currentTimeMillis());
+		} catch (Exception e) {
+			app.getSettings().AGPS_DATA_LAST_TIME_DOWNLOADED.set(0L);
+			e.printStackTrace();
+		}		
 	}
 
 	private Listener getGpsStatusListener(final LocationManager service) {
@@ -846,5 +870,7 @@ public class OsmAndLocationProvider implements SensorEventListener {
 		}
 		return true;
 	}
+
+	
 
 }

@@ -10,23 +10,23 @@ import net.osmand.CallbackWithObject;
 import net.osmand.ResultMatcher;
 import net.osmand.StateChangedListener;
 import net.osmand.access.AccessibleToast;
-import net.osmand.data.AmenityType;
 import net.osmand.map.ITileSource;
 import net.osmand.map.TileSourceManager.TileSourceTemplate;
+import net.osmand.osm.PoiCategory;
 import net.osmand.plus.ContextMenuAdapter;
 import net.osmand.plus.ContextMenuAdapter.Item;
 import net.osmand.plus.GPXUtilities.GPXFile;
 import net.osmand.plus.GPXUtilities.WptPt;
-import net.osmand.plus.OsmAndFormatter;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.OsmandSettings.CommonPreference;
 import net.osmand.plus.R;
 import net.osmand.plus.SQLiteTileSource;
+import net.osmand.plus.activities.search.SearchActivity;
 import net.osmand.plus.helpers.GpxUiHelper;
-import net.osmand.plus.poi.PoiLegacyFilter;
 import net.osmand.plus.poi.PoiFiltersHelper;
+import net.osmand.plus.poi.PoiLegacyFilter;
 import net.osmand.plus.rastermaps.OsmandRasterMapsPlugin;
 import net.osmand.plus.render.MapVectorLayer;
 import net.osmand.plus.render.RenderingIcons;
@@ -46,6 +46,7 @@ import net.osmand.plus.views.PointNavigationLayer;
 import net.osmand.plus.views.RouteLayer;
 import net.osmand.plus.views.TransportInfoLayer;
 import net.osmand.plus.views.TransportStopsLayer;
+import net.osmand.plus.views.mapwidgets.MapWidgetRegistry;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.DialogInterface;
@@ -76,9 +77,15 @@ public class MapActivityLayers {
 	private ContextMenuLayer contextMenuLayer;
 	private MapControlsLayer mapControlsLayer;
 	private DownloadedRegionsLayer downloadedRegionsLayer;
-
+	private MapWidgetRegistry mapWidgetRegistry;
+	
 	public MapActivityLayers(MapActivity activity) {
 		this.activity = activity;
+		this.mapWidgetRegistry = new MapWidgetRegistry(activity.getMyApplication().getSettings());
+	}
+	
+	public MapWidgetRegistry getMapWidgetRegistry() {
+		return mapWidgetRegistry;
 	}
 
 	public OsmandApplication getApplication(){
@@ -117,8 +124,10 @@ public class MapActivityLayers {
 		// 2. osm bugs layer
 		// 3. poi layer
 		poiMapLayer = new POIMapLayer(activity);
+		mapView.addLayer(poiMapLayer, 3);
 		// 4. favorites layer
 		favoritesLayer = new FavoritesLayer();
+		mapView.addLayer(favoritesLayer, 4);
 		// 5. transport layer
 		transportStopsLayer = new TransportStopsLayer();
 		// 5.5 transport info layer 
@@ -166,23 +175,6 @@ public class MapActivityLayers {
 				mapView.removeLayer(transportStopsLayer);
 			}
 		}
-		
-
-		if(mapView.getLayers().contains(poiMapLayer) != settings.SHOW_POI_OVER_MAP.get()){
-			if(settings.SHOW_POI_OVER_MAP.get()){
-				mapView.addLayer(poiMapLayer, 3);
-			} else {
-				mapView.removeLayer(poiMapLayer);
-			}
-		}
-		
-		if(mapView.getLayers().contains(favoritesLayer) != settings.SHOW_FAVORITES.get()){
-			if(settings.SHOW_FAVORITES.get()){
-				mapView.addLayer(favoritesLayer, 4);
-			} else {
-				mapView.removeLayer(favoritesLayer);
-			}
-		}
 		OsmandPlugin.refreshLayers(mapView, activity);
 	}
 	
@@ -214,9 +206,6 @@ public class MapActivityLayers {
 	}
 
 	
-	
-	
-
 	public AlertDialog showGPXFileLayer(List<String> files, final OsmandMapTileView mapView) {
 		final OsmandSettings settings = getApplication().getSettings();
 		CallbackWithObject<GPXFile[]> callbackWithObject = new CallbackWithObject<GPXFile[]>() {
@@ -243,7 +232,7 @@ public class MapActivityLayers {
 							mapView.getZoom(), true);
 				}
 				mapView.refreshMap();
-				activity.getMapActions().refreshDrawer();
+				activity.getDashboard().refreshContent(true);
 				return true;
 			}
 		};
@@ -254,81 +243,58 @@ public class MapActivityLayers {
 			return GpxUiHelper.selectGPXFile(files, activity, true, true, callbackWithObject);
 		}
 	}
-	
-	
-	
-	
-	
+
+
 	public AlertDialog selectPOIFilterLayer(final OsmandMapTileView mapView, final PoiLegacyFilter[] selected){
-		final List<PoiLegacyFilter> userDefined = new ArrayList<PoiLegacyFilter>();
-		OsmandApplication app = (OsmandApplication)getApplication();
+		OsmandApplication app = (OsmandApplication) getApplication();
 		final PoiFiltersHelper poiFilters = app.getPoiFilters();
 		final ContextMenuAdapter adapter = new ContextMenuAdapter(activity);
+		adapter.item(R.string.shared_string_search).iconColor(R.drawable.ic_action_search_dark).reg();
+		final List<PoiLegacyFilter> list = new ArrayList<PoiLegacyFilter>();
+		list.add(poiFilters.getCustomPOIFilter());
+		for (PoiLegacyFilter f : poiFilters.getTopDefinedPoiFilters()) {
+			addFilterToList(adapter, list, f);
+		}
 		
-		Item is = adapter.item(getString(R.string.any_poi));
-		if(RenderingIcons.containsBigIcon("null")) {
-			is.icon(RenderingIcons.getBigIconResourceId("null"));
-		}
-		is.reg();
-		// 2nd custom
-		adapter.item(getString(R.string.poi_filter_custom_filter)).icon(RenderingIcons.getBigIconResourceId("user_defined")).reg();
-		
-		for (PoiLegacyFilter f : poiFilters.getUserDefinedPoiFilters()) {
-			Item it = adapter.item(f.getName());
-			if (RenderingIcons.containsBigIcon(f.getSimplifiedId())) {
-				it.icon(RenderingIcons.getBigIconResourceId(f.getSimplifiedId()));
-			} else {
-				it.icon(RenderingIcons.getBigIconResourceId("user_defined"));
-			}
-			it.reg();
-			userDefined.add(f);
-		}
-		final AmenityType[] categories = AmenityType.getCategories();
-		for(AmenityType t : categories){
-			Item it = adapter.item(OsmAndFormatter.toPublicString(t, activity.getMyApplication()));
-			if(RenderingIcons.containsBigIcon(t.toString().toLowerCase())) {
-				it.icon(RenderingIcons.getBigIconResourceId(t.toString().toLowerCase()));
-			}
-			it.reg();
-		}
 		Builder builder = new AlertDialog.Builder(activity);
-		ListAdapter listAdapter =adapter.createListAdapter(activity, app.getSettings().isLightContentMenu());
+		ListAdapter listAdapter = adapter.createListAdapter(activity, app.getSettings().isLightContent());
 		builder.setAdapter(listAdapter, new DialogInterface.OnClickListener(){
-
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
-				if(which == 1){
-					String filterId = PoiLegacyFilter.CUSTOM_FILTER_ID; 
-					getApplication().getSettings().setPoiFilterForMap(filterId);
-					Intent newIntent = new Intent(activity, EditPOIFilterActivity.class);
-					newIntent.putExtra(EditPOIFilterActivity.AMENITY_FILTER, filterId);
-					newIntent.putExtra(EditPOIFilterActivity.SEARCH_LAT, mapView.getLatitude());
-					newIntent.putExtra(EditPOIFilterActivity.SEARCH_LON, mapView.getLongitude());
-					activity.startActivity(newIntent);
+				PoiLegacyFilter pf = list.get(which);
+				String filterId = pf.getFilterId();
+				if(filterId.equals(PoiLegacyFilter.CUSTOM_FILTER_ID)){
+					Intent search = new Intent(activity, SearchActivity.class);
+					search.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+					activity.getMyApplication().getSettings().SEARCH_TAB.set(SearchActivity.POI_TAB_INDEX);
+					activity.startActivity(search);
 				} else {
-					String filterId;
-					if (which == 0) {
-						filterId = PoiFiltersHelper.getOsmDefinedFilterId(null);
-					} else if (which <= userDefined.size() + 1) {
-						filterId = userDefined.get(which - 2).getFilterId();
-					} else {
-						filterId = PoiFiltersHelper.getOsmDefinedFilterId(categories[which - userDefined.size() - 2]);
+					pf = poiFilters.getFilterById(filterId);
+					if (pf != null) {
+						pf.setFilterByName(pf.getSavedFilterByName());
 					}
-					getApplication().getSettings().setPoiFilterForMap(filterId);
-					PoiLegacyFilter f = poiFilters.getFilterById(filterId);
-					if (f != null) {
-						f.clearNameFilter();
-					}
-					poiMapLayer.setFilter(f);
+					getApplication().getSettings().SELECTED_POI_FILTER_FOR_MAP.set(filterId);
 					mapView.refreshMap();
 					if(selected != null && selected.length > 0) {
-						selected[0] = f;
+						selected[0] = pf;
 					}
 				}
 			}
 			
 		});
+		builder.setNegativeButton(R.string.shared_string_cancel, null);
 		return builder.show();
+	}
+
+	private void addFilterToList(final ContextMenuAdapter adapter, final List<PoiLegacyFilter> list, PoiLegacyFilter f) {
+		list.add(f);
+		Item it = adapter.item(f.getName());
+		if (RenderingIcons.containsBigIcon(f.getSimplifiedId())) {
+			it.icon(RenderingIcons.getBigIconResourceId(f.getSimplifiedId()));
+		} else {
+			it.icon(R.drawable.mx_user_defined);
+		}
+		it.reg();
 	}
 
 	public void selectMapLayer(final OsmandMapTileView mapView){

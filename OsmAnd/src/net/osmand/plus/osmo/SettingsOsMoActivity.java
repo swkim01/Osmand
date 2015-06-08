@@ -1,19 +1,11 @@
 package net.osmand.plus.osmo;
 
 
-import java.util.List;
-
-import net.osmand.access.AccessibleToast;
-import net.osmand.plus.OsmandPlugin;
-import net.osmand.plus.R;
-import net.osmand.plus.activities.SettingsBaseActivity;
-import net.osmand.plus.activities.actions.ShareDialog;
-import net.osmand.plus.osmo.OsMoService.SessionInfo;
-import net.osmand.util.Algorithms;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
@@ -24,6 +16,16 @@ import android.util.TypedValue;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import net.osmand.access.AccessibleToast;
+import net.osmand.plus.OsmandApplication;
+import net.osmand.plus.R;
+import net.osmand.plus.activities.SettingsBaseActivity;
+import net.osmand.plus.activities.actions.ShareDialog;
+import net.osmand.plus.osmo.OsMoService.SessionInfo;
+import net.osmand.util.Algorithms;
+
+import java.util.List;
 
 public class SettingsOsMoActivity extends SettingsBaseActivity {
 
@@ -37,6 +39,7 @@ public class SettingsOsMoActivity extends SettingsBaseActivity {
 
 	@Override
     public void onCreate(Bundle savedInstanceState) {
+		((OsmandApplication) getApplication()).applyTheme(this);
 		super.onCreate(savedInstanceState);
 		getToolbar().setTitle(R.string.osmo_settings);
 		PreferenceScreen grp = getPreferenceScreen();
@@ -73,13 +76,13 @@ public class SettingsOsMoActivity extends SettingsBaseActivity {
 		useHttps.setSummary(R.string.osmo_use_https_descr);
 		grp.addPreference(useHttps);
 		
-		if (OsmandPlugin.isDevelopment()) {
+//		if (OsmandPlugin.isDevelopment()) {
 			debugPref = new Preference(this);
 			debugPref.setTitle(R.string.osmo_settings_debug);
 			debugPref.setOnPreferenceClickListener(this);
 			updateDebugPref();
 			grp.addPreference(debugPref);
-		}
+//		}
     }
 
 	private void updateDebugPref() {
@@ -127,12 +130,24 @@ public class SettingsOsMoActivity extends SettingsBaseActivity {
 			ScrollView sv = new ScrollView(this);
 			TextView tv = new TextView(this);
 			sv.addView(tv);
-			tv.setText(bs.toString());
+			final String log = bs.toString();
+			tv.setText(log);
 			tv.setPadding(5, 0, 5, 5);
 			tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
 			tv.setMovementMethod(LinkMovementMethod.getInstance());
 			bld.setView(sv);
-			bld.setPositiveButton(R.string.default_buttons_ok, null);
+			bld.setNegativeButton(R.string.shared_string_ok, null);
+			bld.setPositiveButton(R.string.shared_string_share, new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					final Intent sendIntent = new Intent();
+					sendIntent.setAction(Intent.ACTION_SEND);
+					sendIntent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_fav_subject));
+					sendIntent.putExtra(Intent.EXTRA_TEXT, log);
+					sendIntent.setType("text/plain");
+					startActivity(sendIntent);
+				}
+			});
 			bld.show();
 			return true;
 		} else if(preference == trackerId) {
@@ -160,7 +175,7 @@ public class SettingsOsMoActivity extends SettingsBaseActivity {
 			public void run() {
 				Builder bld = new AlertDialog.Builder(SettingsOsMoActivity.this);
 				bld.setMessage(R.string.osmo_regenerate_login_ids_confirm);
-				bld.setPositiveButton(R.string.default_buttons_yes, new OnClickListener() {
+				bld.setPositiveButton(R.string.shared_string_yes, new OnClickListener() {
 					
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
@@ -168,7 +183,7 @@ public class SettingsOsMoActivity extends SettingsBaseActivity {
 						plugin.getService().pushCommand(OsMoService.REGENERATE_CMD);
 					}
 				});
-				bld.setNegativeButton(R.string.default_buttons_no, null);
+				bld.setNegativeButton(R.string.shared_string_no, null);
 				bld.show();
 			}
 		};

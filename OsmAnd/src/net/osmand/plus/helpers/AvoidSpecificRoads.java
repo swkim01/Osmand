@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.osmand.CallbackWithObject;
-import net.osmand.binary.BinaryMapRouteReaderAdapter.RouteRegion;
 import net.osmand.binary.RouteDataObject;
 import net.osmand.data.LatLon;
 import net.osmand.plus.OsmAndFormatter;
@@ -35,20 +34,22 @@ public class AvoidSpecificRoads {
 
 	public AvoidSpecificRoads(OsmandApplication app) {
 		this.app = app;
-		missingRoads = getBuilder().getImpassableRoads();
 	}
-
-
-
+	
+	public List<RouteDataObject> getMissingRoads() {
+		if(missingRoads == null) {
+			missingRoads = app.getDefaultRoutingConfig().getImpassableRoads();
+		}
+		return missingRoads;
+	}
+	
 	protected net.osmand.router.RoutingConfiguration.Builder getBuilder() {
 		return RoutingConfiguration.getDefault();
 	}
 	
-	
-	
 	public ArrayAdapter<RouteDataObject> createAdapter(final MapActivity ctx) {
 		final ArrayList<RouteDataObject> points = new ArrayList<RouteDataObject>();
-		points.addAll(missingRoads);
+		points.addAll(getMissingRoads());
 		final LatLon mapLocation = ctx.getMapLocation();
 		return new ArrayAdapter<RouteDataObject>(ctx,
 				R.layout.waypoint_reached, R.id.title, points) {
@@ -62,8 +63,8 @@ public class AvoidSpecificRoads {
 				}
 				final RouteDataObject obj = getItem(position);
 				v.findViewById(R.id.all_points).setVisibility(View.GONE);
-				((ImageView) v.findViewById(R.id.waypoint_icon)).setImageResource(app.getSettings().isLightContentMenu() ?
-						R.drawable.ic_action_road_works_light : R.drawable.ic_action_road_works_dark);
+				((ImageView) v.findViewById(R.id.waypoint_icon)).setImageDrawable(
+						app.getIconsCache().getContentIcon(R.drawable.ic_action_road_works_dark));
 				double dist = MapUtils.getDistance(mapLocation, MapUtils.get31LatitudeY(obj.getPoint31YTile(0)),
 						MapUtils.get31LongitudeX(obj.getPoint31XTile(0)));
 				((TextView) v.findViewById(R.id.waypoint_dist)).setText(OsmAndFormatter.getFormattedDistance((float) dist, app));
@@ -71,8 +72,8 @@ public class AvoidSpecificRoads {
 				((TextView) v.findViewById(R.id.waypoint_text)).setText(getText(obj));
 				ImageButton remove = (ImageButton) v.findViewById(R.id.info_close);
 				remove.setVisibility(View.VISIBLE);
-				remove.setImageResource(app.getSettings().isLightContentMenu() ?
-						R.drawable.ic_action_gremove_light : R.drawable.ic_action_gremove_dark);
+				remove.setImageDrawable(app.getIconsCache().getContentIcon(
+						R.drawable.ic_action_gremove_dark));
 				remove.setOnClickListener(new View.OnClickListener() {
 
 					@Override
@@ -101,14 +102,14 @@ public class AvoidSpecificRoads {
 	public void showDialog(final MapActivity mapActivity) {
 		Builder bld = new AlertDialog.Builder(mapActivity);
 		bld.setTitle(R.string.impassable_road);
-		if (missingRoads.size() == 0){
+		if (getMissingRoads().size() == 0){
 			bld.setMessage(R.string.avoid_roads_msg);
 		} else {
 			final ArrayAdapter<?>  listAdapter = createAdapter(mapActivity);
 			bld.setAdapter(listAdapter, new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
-					RouteDataObject obj = missingRoads.get(which - 1);
+					RouteDataObject obj = getMissingRoads().get(which);
 					double lat = MapUtils.get31LatitudeY(obj.getPoint31YTile(0));
 					double lon = MapUtils.get31LongitudeX(obj.getPoint31XTile(0));
 					showOnMap(app, mapActivity, lat, lon, getText(obj), dialog);
@@ -117,13 +118,13 @@ public class AvoidSpecificRoads {
 			});
 		}
 
-		bld.setPositiveButton(R.string.select_impassable_road, new DialogInterface.OnClickListener() {
+		bld.setPositiveButton(R.string.shared_string_select_on_map, new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialogInterface, int i) {
 				selectFromMap(mapActivity);
 			}
 		});
-		bld.setNegativeButton(R.string.default_buttons_cancel, null);
+		bld.setNegativeButton(R.string.shared_string_close, null);
 		bld.show();
 	}
 	

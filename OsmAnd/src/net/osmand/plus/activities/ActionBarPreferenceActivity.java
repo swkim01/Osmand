@@ -1,7 +1,9 @@
 package net.osmand.plus.activities;
 
+import net.osmand.plus.OsmandApplication;
+import net.osmand.plus.OsmandSettings;
+import net.osmand.plus.R;
 import android.app.Activity;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
@@ -12,42 +14,51 @@ import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Spinner;
-import net.osmand.plus.OsmandApplication;
-import net.osmand.plus.R;
 
 public abstract class ActionBarPreferenceActivity extends PreferenceActivity {
-	private Toolbar toolbar;
+	private Toolbar tb;
 	private View shadowView;
 
 	public Toolbar getToolbar() {
-		return toolbar;
+		return tb;
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
+		//settings needed it's own theme because of check boxes not styled properly
+		OsmandSettings settings = ((OsmandApplication)getApplication()).getSettings();
+		int t = R.style.OsmandLightTheme;
+		if (settings.OSMAND_THEME.get() == OsmandSettings.OSMAND_DARK_THEME) {
+			t = R.style.OsmandDarkTheme;
+		} else if (settings.OSMAND_THEME.get() == OsmandSettings.OSMAND_LIGHT_THEME) {
+			t = R.style.OsmandLightTheme;
+		}
+		setTheme(t);
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.preference_activity);
-		toolbar = (Toolbar) findViewById(R.id.toolbar);
+		tb = (Toolbar) findViewById(R.id.toolbar);
 		if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
 			shadowView = findViewById(R.id.shadowView);
 			final ViewGroup parent = (ViewGroup) shadowView.getParent();
 			parent.removeView(shadowView);
 			shadowView = null;
 		}
-		toolbar.setClickable(true);
-		toolbar.setNavigationIcon(getResIdFromAttribute(this, R.attr.homeAsUpIndicator));
-		toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+		tb.setClickable(true);
+		tb.setNavigationIcon(((OsmandApplication)getApplication()).getIconsCache().getIcon(R.drawable.abc_ic_ab_back_mtrl_am_alpha));
+		tb.setBackgroundColor(getResources().getColor(getResIdFromAttribute(this, R.attr.pstsTabBackground)));
+		tb.setTitleTextColor(getResources().getColor(getResIdFromAttribute(this, R.attr.pstsTextColor)));
+		tb.setNavigationOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(final View v) {
 				finish();
 			}
 		});
+
 		getSpinner().setVisibility(View.GONE);
 		setProgressVisibility(false);
 	}
 
-	private static int getResIdFromAttribute(final Activity activity, final int attr) {
+	static int getResIdFromAttribute(final Activity activity, final int attr) {
 		if (attr == 0)
 			return 0;
 		final TypedValue typedvalueattr = new TypedValue();
@@ -57,7 +68,7 @@ public abstract class ActionBarPreferenceActivity extends PreferenceActivity {
 
 	protected void setEnabledActionBarShadow(final boolean enable) {
 		if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
-			ViewCompat.setElevation(toolbar, enable ? 4 : 0);
+			ViewCompat.setElevation(tb, enable ? 4 : 0);
 		} else {
 			if (shadowView == null)
 				shadowView = findViewById(R.id.shadowView);

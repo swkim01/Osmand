@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.Set;
 
 import net.osmand.plus.ApplicationMode;
+import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.SettingsBaseActivity;
 import net.osmand.plus.activities.actions.AppModeDialog;
+//import net.osmand.plus.development.OsmandDevelopmentPlugin;
 import net.osmand.util.SunriseSunset;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
@@ -28,6 +30,7 @@ public class SettingsDevelopmentActivity extends SettingsBaseActivity {
 
 	@Override
     public void onCreate(Bundle savedInstanceState) {
+		((OsmandApplication) getApplication()).applyTheme(this);
 		super.onCreate(savedInstanceState);
 		getToolbar().setTitle(R.string.debugging_and_development);
 		PreferenceScreen cat = getPreferenceScreen();
@@ -36,9 +39,16 @@ public class SettingsDevelopmentActivity extends SettingsBaseActivity {
 				R.string.trace_rendering, R.string.trace_rendering_descr);
 		cat.addPreference(dbg);
 		
-		cat.addPreference(createCheckBoxPreference(settings.DISABLE_COMPLEX_ROUTING, R.string.disable_complex_routing, R.string.disable_complex_routing_descr));
+		cat.addPreference(createCheckBoxPreference(settings.DISABLE_COMPLEX_ROUTING,
+				R.string.disable_complex_routing, R.string.disable_complex_routing_descr));
+	
+		cat.addPreference(createCheckBoxPreference(settings.USE_FAST_RECALCULATION,
+				R.string.use_fast_recalculation, R.string.use_fast_recalculation_desc));
 		
-		cat.addPreference(createCheckBoxPreference(settings.USE_MAGNETIC_FIELD_SENSOR_COMPASS, R.string.use_magnetic_sensor, R.string.use_magnetic_sensor_descr));
+		
+		cat.addPreference(createCheckBoxPreference(settings.USE_MAGNETIC_FIELD_SENSOR_COMPASS,
+				R.string.use_magnetic_sensor,
+				R.string.use_magnetic_sensor_descr));
 
 		Preference pref = new Preference(this);
 		pref.setTitle(R.string.test_voice_prompts);
@@ -65,17 +75,17 @@ public class SettingsDevelopmentActivity extends SettingsBaseActivity {
 			}
 		});
 		cat.addPreference(pref);
-		
+
 		pref = new Preference(this);
 		pref.setTitle(R.string.global_app_allocated_memory);
-		
+
 		long javaAvailMem = (Runtime.getRuntime().totalMemory() -  Runtime.getRuntime().freeMemory())/ (1024*1024l);
 		long javaTotal = Runtime.getRuntime().totalMemory() / (1024*1024l);
 		long dalvikSize = android.os.Debug.getNativeHeapAllocatedSize() / (1024*1024l);
 		pref.setSummary(getString(R.string.global_app_allocated_memory_descr, javaAvailMem, javaTotal, dalvikSize));
-		pref.setEnabled(false);
-		//Use setEnabled(false) only, this way you can produce more contrast by/while tapping it when needed
-		//pref.setSelectable(false);
+		pref.setSelectable(false);
+		//setEnabled(false) creates bad readability on some devices
+		//pref.setEnabled(false);
 		cat.addPreference(pref);
 		
 //		ActivityManager activityManager = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);
@@ -89,11 +99,34 @@ public class SettingsDevelopmentActivity extends SettingsBaseActivity {
 		pref.setSummary(getString(R.string.native_app_allocated_memory_descr 
 				, mem.nativePrivateDirty / 1024, mem.dalvikPrivateDirty / 1024 , mem.otherPrivateDirty / 1024
 				, mem.nativePss / 1024, mem.dalvikPss / 1024 , mem.otherPss / 1024));
-		pref.setEnabled(false);
-		//Use setEnabled(false) only, this way you can produce more contrast by/while tapping it when needed
-		//pref.setSelectable(false);
+		pref.setSelectable(false);
+		//setEnabled(false) creates bad readability on some devices
+		//pref.setEnabled(false);
 		cat.addPreference(pref);
-		
+
+		final Preference agpspref = new Preference(this);
+		agpspref.setTitle(R.string.agps_info);
+		if (settings.AGPS_DATA_LAST_TIME_DOWNLOADED.get() != 0L) {
+			SimpleDateFormat prt = new SimpleDateFormat("yyyy-MM-dd  HH:mm");
+			agpspref.setSummary(getString(R.string.agps_data_last_downloaded, prt.format(settings.AGPS_DATA_LAST_TIME_DOWNLOADED.get())));
+		} else {
+			agpspref.setSummary(getString(R.string.agps_data_last_downloaded, "--"));
+		}
+		agpspref.setSelectable(true);
+		//setEnabled(false) creates bad readability on some devices
+		//pref.setEnabled(false);
+		agpspref.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+			@Override
+			public boolean onPreferenceClick(Preference preference) {
+				if(getMyApplication().getSettings().isInternetConnectionAvailable(true)) {
+					getMyApplication().getLocationProvider().redownloadAGPS();
+					SimpleDateFormat prt = new SimpleDateFormat("yyyy-MM-dd  HH:mm");
+					agpspref.setSummary(getString(R.string.agps_data_last_downloaded, prt.format(settings.AGPS_DATA_LAST_TIME_DOWNLOADED.get())));
+				}
+			return true;
+			}
+		});
+		cat.addPreference(agpspref);
 		
 		SunriseSunset sunriseSunset = getMyApplication().getDaynightHelper().getSunriseSunset();
 		pref = new Preference(this);
@@ -103,12 +136,11 @@ public class SettingsDevelopmentActivity extends SettingsBaseActivity {
 			pref.setSummary(getString(R.string.day_night_info_description, prt.format(sunriseSunset.getSunrise()),
 					prt.format(sunriseSunset.getSunset())));
 		} else {
-			pref.setSummary(getString(R.string.day_night_info_description, "null",
-					"null"));
+			pref.setSummary(getString(R.string.day_night_info_description, "null", "null"));
 		}
-		pref.setEnabled(false);
-		//Use setEnabled(false) only, this way you can produce more contrast by/while tapping it when needed
-		//pref.setSelectable(false);
+		pref.setSelectable(false);
+		//setEnabled(false) creates bad readability on some devices
+		//pref.setEnabled(false);
 		cat.addPreference(pref);	
 	}
 	
@@ -133,7 +165,7 @@ public class SettingsDevelopmentActivity extends SettingsBaseActivity {
 					}
 				});
 		b.setTitle(R.string.profile_settings);
-		b.setPositiveButton(R.string.default_buttons_ok, null);
+		b.setPositiveButton(R.string.shared_string_ok, null);
 		b.setView(v);
 		b.show();
 	}

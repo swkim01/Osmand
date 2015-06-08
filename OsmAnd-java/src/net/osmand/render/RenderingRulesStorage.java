@@ -25,6 +25,7 @@ import org.xmlpull.v1.XmlPullParserException;
 public class RenderingRulesStorage {
 
 	private final static Log log = PlatformUtil.getLog(RenderingRulesStorage.class);
+	static boolean STORE_ATTTRIBUTES = false;
 	
 	// keep sync !
 	// keep sync ! not change values
@@ -34,7 +35,7 @@ public class RenderingRulesStorage {
 	public final static int POLYGON_RULES = 3;
 	public final static int TEXT_RULES = 4;
 	public final static int ORDER_RULES = 5;
-	private final static int LENGTH_RULES = 6;
+	public final static int LENGTH_RULES = 6;
 	
 	private final static int SHIFT_TAG_VAL = 16;
 	
@@ -50,8 +51,8 @@ public class RenderingRulesStorage {
 	protected Map<String, RenderingRule> renderingAttributes = new LinkedHashMap<String, RenderingRule>();
 	protected Map<String, String> renderingConstants = new LinkedHashMap<String, String>();
 	
-	private String renderingName;
-	private String internalRenderingName;
+	protected String renderingName;
+	protected String internalRenderingName;
 	
 	
 	public static interface RenderingRulesStorageResolver {
@@ -233,7 +234,7 @@ public class RenderingRulesStorage {
 				boolean top = stack.size() == 0 || isTopCase();
 				parseAttributes(attrsMap);
 				RenderingRule renderingRule = new RenderingRule(attrsMap, isSwitch, RenderingRulesStorage.this);
-				if(top){
+				if(top || STORE_ATTTRIBUTES){
 					renderingRule.storeAttributes(attrsMap);
 				}
 				if (stack.size() > 0 && stack.peek() instanceof RenderingRule) {
@@ -245,6 +246,9 @@ public class RenderingRulesStorage {
 				attrsMap.clear();
 				parseAttributes(attrsMap);
 				RenderingRule renderingRule = new RenderingRule(attrsMap, false, RenderingRulesStorage.this);
+				if(STORE_ATTTRIBUTES) {
+					renderingRule.storeAttributes(attrsMap);
+				}
 				if (stack.size() > 0 && stack.peek() instanceof RenderingRule) {
 					((RenderingRule) stack.peek()).addIfChildren(renderingRule);
 				} else {
@@ -372,10 +376,10 @@ public class RenderingRulesStorage {
 					List<RenderingRule> apply = applyRules;
 					if(!renderingRule.getIfChildren().isEmpty()) {
 						apply = new ArrayList<RenderingRule>();
+						apply.addAll(renderingRule.getIfChildren());
 						if(applyRules != null) {
 							apply.addAll(applyRules);
 						}
-						apply.addAll(renderingRule.getIfChildren());
 					}
 					Map<String, String> cattrs = new HashMap<String, String>(attrs);
 					cattrs.putAll(renderingRule.getAttributes());
@@ -390,6 +394,9 @@ public class RenderingRulesStorage {
 				vl = ns.remove("value");
 				// reset rendering rule attributes
 				renderingRule.init(ns);
+				if(STORE_ATTTRIBUTES) {
+					renderingRule.storeAttributes(ns);
+				}
 				
 				registerGlobalRule(renderingRule, state, tg, vl);
 				if (applyRules != null) {
@@ -460,36 +467,66 @@ public class RenderingRulesStorage {
 	
 	
 	public static void main(String[] args) throws XmlPullParserException, IOException {
-		InputStream is = RenderingRulesStorage.class.getResourceAsStream("default.render.xml");
+		STORE_ATTTRIBUTES = true;
+//		InputStream is = RenderingRulesStorage.class.getResourceAsStream("default.render.xml");
+		String file = "/Users/victorshcherb/osmand/repos/resources/rendering_styles/default.render.xml";
+		Map<String, String> renderingConstants = new LinkedHashMap<String, String>();
+		InputStream is = new FileInputStream(file);
 		if(args != null && args.length > 0) {
 			is = new FileInputStream(args[0]);
 		}
-		RenderingRulesStorage storage = new RenderingRulesStorage("test", null);
+		try {
+			XmlPullParser parser = PlatformUtil.newXMLPullParser();
+			parser.setInput(is, "UTF-8");
+			int tok;
+			while ((tok = parser.next()) != XmlPullParser.END_DOCUMENT) {
+				if (tok == XmlPullParser.START_TAG) {
+					String tagName = parser.getName();
+					if (tagName.equals("renderingConstant")) {
+						if (!renderingConstants.containsKey(parser.getAttributeValue("", "name"))) {
+							renderingConstants.put(parser.getAttributeValue("", "name"), 
+									parser.getAttributeValue("", "value"));
+						}
+					}
+				}
+			}
+		} finally {
+			is.close();
+		}
+		is = new FileInputStream(file);
+		RenderingRulesStorage storage = new RenderingRulesStorage("default", renderingConstants);
 		final RenderingRulesStorageResolver resolver = new RenderingRulesStorageResolver() {
 			@Override
 			public RenderingRulesStorage resolve(String name, RenderingRulesStorageResolver ref) throws XmlPullParserException, IOException {
-				RenderingRulesStorage depends = new RenderingRulesStorage("test", null);
+				RenderingRulesStorage depends = new RenderingRulesStorage(name, null);
 				depends.parseRulesFromXmlInputStream(RenderingRulesStorage.class.getResourceAsStream(name + ".render.xml"), ref);
 				return depends;
 			}
 		};
 		storage.parseRulesFromXmlInputStream(is, resolver);
 		
-//		printAllRules(storage);
-		testSearch(storage);
+//		storage = new RenderingRulesStorage("", null);
+//		new DefaultRenderingRulesStorage().createStyle(storage);
+		
+		
+		printAllRules(storage);
+//		testSearch(storage);
+		
 	}
-
+	
+	
+	
 	protected static void testSearch(RenderingRulesStorage storage) {
 		//		long tm = System.nanoTime();
 		//		int count = 100000;
 		//		for (int i = 0; i < count; i++) {
 					RenderingRuleSearchRequest searchRequest = new RenderingRuleSearchRequest(storage);
 					searchRequest.setStringFilter(storage.PROPS.R_TAG, "highway");
-					searchRequest.setStringFilter(storage.PROPS.R_VALUE, "primary");
+					searchRequest.setStringFilter(storage.PROPS.R_VALUE, "residential");
 //					searchRequest.setStringFilter(storage.PROPS.R_ADDITIONAL, "leaf_type=broadleaved");
 //					 searchRequest.setIntFilter(storage.PROPS.R_LAYER, 1);
-					searchRequest.setIntFilter(storage.PROPS.R_MINZOOM, 9);
-					searchRequest.setIntFilter(storage.PROPS.R_MAXZOOM, 9);
+					searchRequest.setIntFilter(storage.PROPS.R_MINZOOM, 13);
+					searchRequest.setIntFilter(storage.PROPS.R_MAXZOOM, 13);
 //						searchRequest.setBooleanFilter(storage.PROPS.R_NIGHT_MODE, true);
 //					for (RenderingRuleProperty customProp : storage.PROPS.getCustomRules()) {
 //						if (customProp.isBoolean()) {
@@ -498,7 +535,7 @@ public class RenderingRulesStorage {
 //							searchRequest.setStringFilter(customProp, "");
 //						}
 //					}
-					searchRequest.setBooleanFilter(storage.PROPS.get("noPolygons"), true);
+//					searchRequest.setBooleanFilter(storage.PROPS.get("noPolygons"), true);
 					boolean res = searchRequest.search(LINE_RULES);
 					System.out.println("Result " + res);
 					printResult(searchRequest,  System.out);

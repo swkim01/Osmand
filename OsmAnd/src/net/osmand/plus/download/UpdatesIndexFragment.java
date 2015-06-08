@@ -1,53 +1,113 @@
 package net.osmand.plus.download;
 
-import android.content.Context;
-import android.graphics.Typeface;
-import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.ListFragment;
-import android.support.v4.view.MenuItemCompat;
-import android.support.v7.app.ActionBar;
-import android.view.*;
-import android.widget.*;
+import java.text.MessageFormat;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
 import net.osmand.access.AccessibleToast;
 import net.osmand.map.OsmandRegions;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.R;
-
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import net.osmand.plus.activities.OsmAndListFragment;
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v7.app.ActionBar;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 /**
- * Created by Denis on 09.09.2014.
+ * Created by Denis
+ * on 09.09.2014.
  */
-public class UpdatesIndexFragment extends ListFragment {
+public class UpdatesIndexFragment extends OsmAndListFragment {
 
 	private OsmandRegions osmandRegions;
 	private java.text.DateFormat format;
 	private UpdateIndexAdapter listAdapter;
-	private int updateColor;
+	List<IndexItem> indexItems = new ArrayList<IndexItem>();
 
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+		View view = inflater.inflate(R.layout.update_index, container, false);
+		final CheckBox selectAll = (CheckBox) view.findViewById(R.id.select_all);
+		selectAll.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				if (selectAll.isChecked()) {
+					selectAll();
+				} else {
+					deselectAll();
+
+				}
+				listAdapter.notifyDataSetInvalidated();
+			}
+		});
+		return view;
+	}
+
+	private void refreshSelectAll() {
+		View view = getView();
+		if (view == null) {
+			return;
+		}
+		CheckBox selectAll = (CheckBox) view.findViewById(R.id.select_all);
+		for (IndexItem item : indexItems) {
+			if (!getDownloadActivity().getEntriesToDownload().containsKey(item)){
+				selectAll.setChecked(false);
+				return;
+			}
+		}
+		selectAll.setChecked(true);
+	}
+
+	private void setSelectAllVisibility(boolean visible) {
+		View view = getView();
+		if (view == null) {
+			return;
+		}
+		if (visible) {
+			view.findViewById(R.id.header_layout).setVisibility(View.VISIBLE);
+		} else {
+			view.findViewById(R.id.header_layout).setVisibility(View.GONE);
+		}
+	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		format = getMyApplication().getResourceManager().getDateFormat();
-		updateColor = getResources().getColor(R.color.color_update);
 		osmandRegions = getMyApplication().getResourceManager().getOsmandRegions();
-		List<IndexItem> indexItems = new ArrayList<IndexItem>();
 		if (BaseDownloadActivity.downloadListIndexThread != null) {
-			indexItems =  new ArrayList<IndexItem>(DownloadActivity.downloadListIndexThread.getItemsToUpdate());
+			indexItems = new ArrayList<IndexItem>(DownloadActivity.downloadListIndexThread.getItemsToUpdate());
 		}
-		createListView(indexItems);
+		createListView();
 		setHasOptionsMenu(true);
 	}
 
-	private void createListView(List<IndexItem> indexItems) {
+	private void createListView() {
+		updateHeader();
 		if (indexItems.size() == 0) {
-			indexItems.add(new IndexItem(getString(R.string.everything_up_to_date), "", 0, "", 0, 0, null));
+			if (DownloadActivity.downloadListIndexThread.isDownloadedFromInternet()) {
+				indexItems.add(new IndexItem(getString(R.string.everything_up_to_date), "", 0, "", 0, 0, null));
+			} else {
+				indexItems.add(new IndexItem(getString(R.string.no_index_file_to_download), "", 0, "", 0, 0, null));
+			}
 		}
 		listAdapter = new UpdateIndexAdapter(getDownloadActivity(), R.layout.download_index_list_item, indexItems);
 		listAdapter.sort(new Comparator<IndexItem>() {
@@ -59,17 +119,27 @@ public class UpdatesIndexFragment extends ListFragment {
 		setListAdapter(listAdapter);
 	}
 
+	private void updateHeader(){
+		View view = getView();
+		if (getView() == null) {
+			return;
+		}
+		String header = getActivity().getString(R.string.download_tab_updates) + " - " + indexItems.size();
+		((TextView) view.findViewById(R.id.header)).
+				setText(header);
+	}
+
 	@Override
 	public void onResume() {
 		super.onResume();
 	}
 
 	public void updateItemsList(List<IndexItem> items) {
-		if(listAdapter == null){
+		if (listAdapter == null) {
 			return;
 		}
-
-		createListView(new ArrayList<IndexItem>(items));
+		indexItems = new ArrayList<IndexItem>(items);
+		createListView();
 	}
 
 	@Override
@@ -78,21 +148,21 @@ public class UpdatesIndexFragment extends ListFragment {
 		onItemSelected(ch, position);
 	}
 
-	private void onItemSelected(CheckBox ch, int position){
+	private void onItemSelected(CheckBox ch, int position) {
 		final IndexItem e = (IndexItem) getListAdapter().getItem(position);
 		if (ch.isChecked()) {
 			ch.setChecked(!ch.isChecked());
 			getDownloadActivity().getEntriesToDownload().remove(e);
-			getDownloadActivity().updateDownloadButton(true);
-			return;
+			getDownloadActivity().updateDownloadButton();
+		} else {
+			List<DownloadEntry> download = e.createDownloadEntry(getMyApplication(), e.getType(), new ArrayList<DownloadEntry>());
+			if (download.size() > 0) {
+				getDownloadActivity().getEntriesToDownload().put(e, download);
+				getDownloadActivity().updateDownloadButton();
+				ch.setChecked(!ch.isChecked());
+			}
 		}
-
-		List<DownloadEntry> download = e.createDownloadEntry(getMyApplication(), e.getType(), new ArrayList<DownloadEntry>());
-		if (download.size() > 0) {
-			getDownloadActivity().getEntriesToDownload().put(e, download);
-			getDownloadActivity().updateDownloadButton(true);
-			ch.setChecked(!ch.isChecked());
-		}
+		refreshSelectAll();
 	}
 
 	public DownloadActivity getDownloadActivity() {
@@ -101,30 +171,19 @@ public class UpdatesIndexFragment extends ListFragment {
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+		updateHeader();
 		ActionBar actionBar = getDownloadActivity().getSupportActionBar();
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
 
 		if (getMyApplication().getAppCustomization().showDownloadExtraActions()) {
-			MenuItem item = menu.add(0, DownloadIndexFragment.RELOAD_ID, 0, R.string.update_downlod_list);
-			item.setIcon(isLightActionBar() ? R.drawable.ic_action_refresh_light :
-				R.drawable.ic_action_refresh_dark);
+			MenuItem item = menu.add(0, DownloadIndexFragment.RELOAD_ID, 0, R.string.shared_string_refresh);
+			item.setIcon(R.drawable.ic_action_refresh_dark);
 			MenuItemCompat.setShowAsAction(item, MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
-			SubMenu s = menu.addSubMenu(0, DownloadIndexFragment.MORE_ID, 0, R.string.default_buttons_other_actions);
-			s.add(0, DownloadIndexFragment.SELECT_ALL_ID, 0, R.string.select_all);
-			s.add(0, DownloadIndexFragment.DESELECT_ALL_ID, 0, R.string.deselect_all);
-
-//			s.setIcon(isLightActionBar() ? R.drawable.abs__ic_menu_moreoverflow_holo_light
-//					: R.drawable.abs__ic_menu_moreoverflow_holo_dark);
-			MenuItemCompat.setShowAsAction(s.getItem(), MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
 		}
 	}
 
 	public OsmandApplication getMyApplication() {
 		return getDownloadActivity().getMyApplication();
-	}
-
-	public boolean isLightActionBar() {
-		return ((OsmandApplication) getActivity().getApplication()).getSettings().isLightActionBar();
 	}
 
 	@Override
@@ -160,7 +219,7 @@ public class UpdatesIndexFragment extends ListFragment {
 		AccessibleToast.makeText(getDownloadActivity(), MessageFormat.format(getString(R.string.items_were_selected), selected), Toast.LENGTH_SHORT).show();
 		listAdapter.notifyDataSetInvalidated();
 		if (selected > 0) {
-			getDownloadActivity().updateDownloadButton(true);
+			getDownloadActivity().updateDownloadButton();
 		}
 	}
 
@@ -172,11 +231,11 @@ public class UpdatesIndexFragment extends ListFragment {
 	}
 
 	private void filterExisting() {
-		final Map<String, String> listAlreadyDownloaded =  DownloadActivity.downloadListIndexThread.getDownloadedIndexFileNames();
+		final Map<String, String> listAlreadyDownloaded = DownloadActivity.downloadListIndexThread.getDownloadedIndexFileNames();
 
 		final List<IndexItem> filtered = new ArrayList<IndexItem>();
 		for (IndexItem fileItem : listAdapter.getIndexFiles()) {
-			if(fileItem.isAlreadyDownloaded(listAlreadyDownloaded)){
+			if (fileItem.isAlreadyDownloaded(listAlreadyDownloaded)) {
 				filtered.add(fileItem);
 			}
 		}
@@ -207,21 +266,41 @@ public class UpdatesIndexFragment extends ListFragment {
 
 			TextView name = (TextView) v.findViewById(R.id.download_item);
 			TextView description = (TextView) v.findViewById(R.id.download_descr);
+			TextView updateDescr = (TextView) v.findViewById(R.id.update_descr);
 			final CheckBox ch = (CheckBox) v.findViewById(R.id.check_download_item);
 			IndexItem e = items.get(position);
-			if (e.getFileName() == getString(R.string.everything_up_to_date)){
+			if (e.getFileName().equals(getString(R.string.everything_up_to_date)) ||
+					e.getFileName().equals(getString(R.string.no_index_file_to_download))) {
 				name.setText(e.getFileName());
 				description.setText("");
 				ch.setVisibility(View.INVISIBLE);
+				setSelectAllVisibility(false);
+				v.setOnClickListener(null);
 				return v;
 			} else {
 				ch.setVisibility(View.VISIBLE);
 			}
+
 			String eName = e.getVisibleName(getMyApplication(), osmandRegions);
 
-			name.setText(eName.trim()); //$NON-NLS-1$
-			String d = e.getDate(format) + "\n" + e.getSizeDescription(getMyApplication());
+			name.setText(eName.trim().replace('\n', ' ').replace("TTS","")); //$NON-NLS-1$
+			String d =  getMapDescription(e);
 			description.setText(d);
+			
+			String sfName = e.getTargetFileName();
+			Map<String, String> indexActivatedFileNames = getMyApplication().getResourceManager().getIndexFileNames();
+			String dt = indexActivatedFileNames.get(sfName);
+			updateDescr.setText("");
+			if (dt != null) {
+				try {
+					Date tm = format.parse(dt);
+					long days = Math.max(1, (e.getTimestamp() -  tm.getTime()) / (24 * 60 * 60 * 1000) + 1);  
+					updateDescr.setText(days + " " + getString(R.string.days_behind));
+				} catch (ParseException e1) {
+					e1.printStackTrace();
+				}
+			}
+			
 
 			ch.setChecked(getDownloadActivity().getEntriesToDownload().containsKey(e));
 			ch.setOnClickListener(new View.OnClickListener() {
@@ -232,42 +311,12 @@ public class UpdatesIndexFragment extends ListFragment {
 				}
 			});
 
-			if (e.getDate(format) != null) {
-				Map<String, String> indexActivatedFileNames = getDownloadActivity().getIndexActivatedFileNames();
-				Map<String, String> indexFileNames = getDownloadActivity().getIndexFileNames();
-
-				if (indexActivatedFileNames != null && indexFileNames != null){
-					String sfName = e.getTargetFileName();
-					final boolean updatableResource = indexActivatedFileNames.containsKey(sfName);
-					if (updatableResource && !DownloadActivity.downloadListIndexThread.checkIfItemOutdated(e)) {
-						name.setText(name.getText() + "\n" + getResources().getString(R.string.local_index_installed) + " : "
-								+ indexActivatedFileNames.get(sfName));
-						name.setTypeface(Typeface.DEFAULT, Typeface.NORMAL);
-					} else if (e.getDate(format).equals(indexFileNames.get(sfName))) {
-						name.setText(name.getText() + "\n" + getResources().getString(R.string.local_index_installed) + " : "
-								+ indexFileNames.get(sfName));
-						name.setTypeface(Typeface.DEFAULT, Typeface.ITALIC);
-					} else if (updatableResource) {
-						name.setText(name.getText() + "\n" + getResources().getString(R.string.local_index_installed) + " : "
-								+ indexActivatedFileNames.get(sfName));
-						name.setTextColor(updateColor); // LIGHT_BLUE
-						name.setTypeface(Typeface.DEFAULT, Typeface.NORMAL);
-					} else {
-						name.setText(name.getText() + "\n" + getResources().getString(R.string.local_index_installed) + " : "
-								+ indexFileNames.get(sfName));
-						name.setTextColor(updateColor); // LIGHT_BLUE
-						name.setTypeface(Typeface.DEFAULT, Typeface.ITALIC);
-					}
-				}
-			}
-
-
 			return v;
 		}
 
 		public void setIndexFiles(List<IndexItem> filtered) {
 			clear();
-			for (IndexItem item : filtered){
+			for (IndexItem item : filtered) {
 				add(item);
 			}
 			sort(new Comparator<IndexItem>() {
@@ -279,4 +328,27 @@ public class UpdatesIndexFragment extends ListFragment {
 		}
 	}
 
+	private String getMapDescription(IndexItem item){
+		String typeName = getTypeName(item.getType().getResource());
+		String date = item.getDate(format);
+		String size = item.getSizeDescription(getActivity());
+		return typeName + "  " + date + "  " + size;
+
+	}
+
+	private String getTypeName(int resId){
+		Activity activity = getActivity();
+		if (resId == R.string.download_regular_maps){
+			return activity.getString(R.string.shared_string_map);
+		} else if (resId == R.string.voices){
+			return activity.getString(R.string.ttsvoice);
+		} else if (resId == R.string.download_roads_only_maps){
+			return activity.getString(R.string.roads_only);
+		} else if (resId == R.string.download_srtm_maps){
+			return activity.getString(R.string.download_srtm_maps);
+		} else if (resId == R.string.download_hillshade_maps){
+			return activity.getString(R.string.download_hillshade_maps);
+		}
+		return "";
+	}
 }

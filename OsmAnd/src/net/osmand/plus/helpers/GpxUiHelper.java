@@ -4,7 +4,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import net.osmand.CallbackWithObject;
 import net.osmand.IndexConstants;
@@ -132,7 +134,7 @@ public class GpxUiHelper {
 									 final boolean showCurrentGpx, final boolean multipleChoice, final CallbackWithObject<GPXFile[]> callbackWithObject){
 		OsmandApplication app = (OsmandApplication) activity.getApplication();
 		final File dir = app.getAppPath(IndexConstants.GPX_INDEX_DIR);
-		final List<String> allGpxList = getSortedGPXFilenames(dir);
+		final List<String> allGpxList = getSortedGPXFilenames(dir, false);
 		if(allGpxList.isEmpty()){
 			AccessibleToast.makeText(activity, R.string.gpx_files_not_found, Toast.LENGTH_LONG).show();
 		}
@@ -153,7 +155,7 @@ public class GpxUiHelper {
 			final boolean showCurrentGpx, final boolean multipleChoice, final CallbackWithObject<GPXFile[]> callbackWithObject) {
 		OsmandApplication app = (OsmandApplication) activity.getApplication();
 		final File dir = app.getAppPath(IndexConstants.GPX_INDEX_DIR);
-		final List<String> list = getSortedGPXFilenames(dir);
+		final List<String> list = getSortedGPXFilenames(dir, false);
 		if(list.isEmpty()){
 			AccessibleToast.makeText(activity, R.string.gpx_files_not_found, Toast.LENGTH_LONG).show();
 		}
@@ -183,7 +185,7 @@ public class GpxUiHelper {
 			s = s.replace('_', ' ');
 
 			adapter.item(s).selected(multipleChoice ? 0 : -1)
-					.icons(R.drawable.ic_action_info_dark, R.drawable.ic_action_info_light).reg();
+					.iconColor(R.drawable.ic_action_polygom_dark).reg();
 
 			//if there's some selected files - need to mark them as selected
 			if (selectedGpxList != null) {
@@ -232,7 +234,7 @@ public class GpxUiHelper {
 		final File dir = app.getAppPath(IndexConstants.GPX_INDEX_DIR);
 		Builder b = new AlertDialog.Builder(activity);
 		// final int padding = (int) (12 * activity.getResources().getDisplayMetrics().density + 0.5f);
-		final boolean light = app.getSettings().isLightContentMenu();
+		final boolean light = app.getSettings().isLightContent();
 		final int layout;
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
 			layout = R.layout.list_menu_item;
@@ -247,7 +249,7 @@ public class GpxUiHelper {
 				// User super class to create the View
 				View v = activity.getLayoutInflater().inflate(layout, null);
 				ImageView icon = (ImageView) v.findViewById(R.id.icon);
-				icon.setImageResource(adapter.getImageId(position, light));
+				icon.setImageDrawable(adapter.getImage(app, position, light));
 				final ArrayAdapter<String> arrayAdapter = this;
 				icon.setOnClickListener(new View.OnClickListener() {
 					@Override
@@ -303,7 +305,7 @@ public class GpxUiHelper {
 		};
 		b.setAdapter(listAdapter, onClickListener);
 		if (multipleChoice) {
-			b.setPositiveButton(R.string.default_buttons_ok, new DialogInterface.OnClickListener() {
+			b.setPositiveButton(R.string.shared_string_ok, new DialogInterface.OnClickListener() {
 
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
@@ -356,41 +358,54 @@ public class GpxUiHelper {
 		}
 		return dlg;
 	}
-	
-	private static List<String> getSortedGPXFilenames(File dir,String sub) {
-		final List<String> list = new ArrayList<String>();
-		readGpxDirectory(dir, list, "");
+
+	public static List<String> getSortedGPXFilenamesByDate(File dir, boolean absolutePath) {
+		final Map<String, Long> mp = new HashMap<String, Long>();
+		readGpxDirectory(dir, mp, "", absolutePath);
+		ArrayList<String> list = new ArrayList<String>(mp.keySet());
 		Collections.sort(list, new Comparator<String>() {
 			@Override
 			public int compare(String object1, String object2) {
-				if (object1.compareTo(object2) > 0) {
-					return -1;
-				} else if (object1.equals(object2)) {
-					return 0;
-				}
-				return 1;
+				Long l1 = mp.get(object1);
+				Long l2 = mp.get(object2);
+				long lhs = l1 == null ? 0 : l1.longValue();
+				long rhs = l2 == null ? 0 : l2.longValue();
+				return lhs < rhs ? 1 : (lhs == rhs ? 0 : -1);
+			}
+		});
+		return list;
+	}
+
+	
+	public static List<String> getSortedGPXFilenames(File dir, boolean absolutePath) {
+		final Map<String, Long> mp = new HashMap<String, Long>();
+		readGpxDirectory(dir, mp, "", absolutePath);
+		ArrayList<String> list = new ArrayList<String>(mp.keySet());
+		Collections.sort(list, new Comparator<String>() {
+			@Override
+			public int compare(String object1, String object2) {
+				return -object1.compareTo(object2);
 			}
 
 		});
 		return list;
 	}
 
-	private static void readGpxDirectory(File dir, final List<String> list, String parent) {
+	private static void readGpxDirectory(File dir, final Map<String, Long> map, String parent, 
+			boolean absolutePath) {
 		if (dir != null && dir.canRead()) {
 			File[] files = dir.listFiles();
 			if (files != null) {
 				for (File f : files) {
 					if (f.getName().toLowerCase().endsWith(".gpx")) { //$NON-NLS-1$
-						list.add(parent + f.getName());
+						map.put(absolutePath ? f.getAbsolutePath() :
+								parent + f.getName(), f.lastModified());
 					} else if (f.isDirectory()) {
-						readGpxDirectory(f, list, parent + f.getName() + "/");
+						readGpxDirectory(f, map, parent + f.getName() + "/", absolutePath);
 					}
 				}
 			}
 		}
-	}
-	private static List<String> getSortedGPXFilenames(File dir) {
-		return getSortedGPXFilenames(dir, null);
 	}
 	
 	private static void loadGPXFileInDifferentThread(final Activity activity, final CallbackWithObject<GPXFile[]> callbackWithObject,

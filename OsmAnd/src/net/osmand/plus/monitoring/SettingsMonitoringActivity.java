@@ -4,6 +4,7 @@ package net.osmand.plus.monitoring;
 import android.view.Window;
 import net.osmand.plus.NavigationService;
 import net.osmand.plus.OsmAndTaskManager.OsmAndTaskRunnable;
+import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.SavingTrackHelper;
@@ -38,10 +39,10 @@ public class SettingsMonitoringActivity extends SettingsBaseActivity {
 
 	@Override
     public void onCreate(Bundle savedInstanceState) {
-		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+		((OsmandApplication) getApplication()).applyTheme(this);
 		requestWindowFeature(Window.FEATURE_PROGRESS);
 		super.onCreate(savedInstanceState);
-		//setSupportProgressBarIndeterminateVisibility(false);
+		setProgressVisibility(false);
 		getToolbar().setTitle(R.string.monitoring_settings);
 		PreferenceScreen grp = getPreferenceScreen();
 		
@@ -62,9 +63,9 @@ public class SettingsMonitoringActivity extends SettingsBaseActivity {
 		Preference globalrecord = new Preference(this);
 		globalrecord.setTitle(R.string.save_track_to_gpx_globally_headline);
 		globalrecord.setSummary(R.string.save_track_to_gpx_globally_descr);
-		globalrecord.setEnabled(false);
-		//Use setEnabled(false) only, this way you can produce more contrast by/while tapping it when needed
-		//globalrecord.setSelectable(false);
+		globalrecord.setSelectable(false);
+		//setEnabled(false) creates bad readability on some devices
+		//globalrecord.setEnabled(false);
 		cat.addPreference(globalrecord);
 
 		if(settings.SAVE_GLOBAL_TRACK_REMEMBER.get()) {
@@ -121,7 +122,7 @@ public class SettingsMonitoringActivity extends SettingsBaseActivity {
 	}
 	
 	private void saveCurrentTracks(final SavingTrackHelper helper) {
-		//setSupportProgressBarIndeterminateVisibility(true);
+		setProgressVisibility(true);
 		getMyApplication().getTaskManager().runInBackground(new OsmAndTaskRunnable<Void, Void, Void>() {
 
 			@Override
@@ -133,7 +134,7 @@ public class SettingsMonitoringActivity extends SettingsBaseActivity {
 			}
 			@Override
 			protected void onPostExecute(Void result) {
-				//setSupportProgressBarIndeterminateVisibility(false);
+				setProgressVisibility(false);
 			}
 
 		}, (Void) null);

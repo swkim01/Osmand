@@ -3,6 +3,7 @@ package net.osmand.plus.views;
 import java.util.List;
 
 import net.osmand.data.LatLon;
+import net.osmand.data.PointDescription;
 import net.osmand.data.QuadPoint;
 import net.osmand.data.RotatedTileBox;
 import net.osmand.plus.ContextMenuAdapter;
@@ -60,9 +61,9 @@ public class PointNavigationLayer extends OsmandMapLayer implements IContextMenu
 		textPaint.setTextSize(sp * 18);
 		textPaint.setTextAlign(Align.CENTER);
 		textPaint.setAntiAlias(true);
-		targetPoint = BitmapFactory.decodeResource(view.getResources(), R.drawable.target_point);
-		intermediatePoint = BitmapFactory.decodeResource(view.getResources(), R.drawable.intermediate_point);
-		arrowToDestination = BitmapFactory.decodeResource(view.getResources(), R.drawable.arrow_to_destination);
+		targetPoint = BitmapFactory.decodeResource(view.getResources(), R.drawable.map_target_point);
+		intermediatePoint = BitmapFactory.decodeResource(view.getResources(), R.drawable.map_intermediate_point);
+		arrowToDestination = BitmapFactory.decodeResource(view.getResources(), R.drawable.map_arrow_to_destination);
 
 		
 	}
@@ -77,25 +78,28 @@ public class PointNavigationLayer extends OsmandMapLayer implements IContextMenu
 	
 	@Override
 	public void onDraw(Canvas canvas, RotatedTileBox tb, DrawSettings nightMode) {
+		if(tb.getZoom() < 3) {
+			return;
+		}
 		int index = 0;
-		
 		TargetPointsHelper targetPoints = map.getMyApplication().getTargetPointsHelper();
 		for (TargetPoint ip : targetPoints.getIntermediatePoints()) {
 			index ++;
 			if (isLocationVisible(tb, ip)) {
-				int marginX = intermediatePoint.getWidth() / 3;
+				int marginX = intermediatePoint.getWidth() / 6;
 				int marginY = intermediatePoint.getHeight();
 				int locationX = tb.getPixXFromLonNoRot(ip.getLongitude(), ip.getLatitude());
 				int locationY = tb.getPixYFromLatNoRot(ip.getLongitude(), ip.getLatitude());
 				canvas.rotate(-tb.getRotate(), locationX, locationY);
 				canvas.drawBitmap(intermediatePoint, locationX - marginX, locationY - marginY, bitmapPaint);
-				canvas.drawText(index + "", locationX + marginX, locationY - 2 * marginY / 3, textPaint);
+				marginX = intermediatePoint.getWidth() / 3;
+				canvas.drawText(index + "", locationX + marginX, locationY - 3 * marginY / 5, textPaint);
 				canvas.rotate(tb.getRotate(), locationX, locationY);
 			}
 		}
 		TargetPoint pointToNavigate = targetPoints.getPointToNavigate();
 		if (isLocationVisible(tb, pointToNavigate)) {
-			int marginX = targetPoint.getWidth() / 3;
+			int marginX = targetPoint.getWidth() / 6;
 			int marginY = targetPoint.getHeight();
 			int locationX = tb.getPixXFromLonNoRot(pointToNavigate.getLongitude(), pointToNavigate.getLatitude());
 			int locationY = tb.getPixYFromLatNoRot(pointToNavigate.getLongitude(), pointToNavigate.getLatitude());
@@ -201,15 +205,15 @@ public class PointNavigationLayer extends OsmandMapLayer implements IContextMenu
 	@Override
 	public String getObjectDescription(Object o) {
 		if (o instanceof TargetPoint) {
-			return ((TargetPoint) o).getVisibleName(view.getContext());
+			return ((TargetPoint) o).getPointDescription(view.getContext()).getFullPlainName(view.getContext());
 		}
 		return null;
 	}
 
 	@Override
-	public String getObjectName(Object o) {
+	public PointDescription getObjectName(Object o) {
 		if (o instanceof TargetPoint) {
-			return ((TargetPoint) o).getVisibleName(view.getContext());
+			return ((TargetPoint) o).getPointDescription(view.getContext());
 		}
 		return null;
 	}
@@ -236,7 +240,7 @@ public class PointNavigationLayer extends OsmandMapLayer implements IContextMenu
 			
 			
 			adapter.item(R.string.delete_target_point)
-			.icons( R.drawable.ic_action_remove_dark, R.drawable.ic_action_remove_light).listen(listener).reg();
+			.iconColor( R.drawable.ic_action_remove_dark).listen(listener).reg();
 			
 		}
 	}

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 
+import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.R;
 import net.osmand.util.OpeningHoursParser.BasicOpeningHourRule;
 import net.osmand.util.OpeningHoursParser.OpeningHoursRule;
@@ -35,9 +36,11 @@ public class OpeningHoursView {
 	
 	private boolean notifyingTime = true;
 	private ListView list;
+	private OsmandApplication app;
 
 	public OpeningHoursView(Context ctx){
 		this.ctx = ctx;
+		app = (OsmandApplication) ctx.getApplicationContext();
 	}
 	
 	public View createOpeningHoursEditView(List<BasicOpeningHourRule> t){
@@ -119,6 +122,7 @@ public class OpeningHoursView {
 			}
 			TextView label = (TextView)row.findViewById(R.id.label);
 			ImageView icon = (ImageView)row.findViewById(R.id.remove);
+			icon.setBackgroundDrawable(app.getIconsCache().getContentIcon(R.drawable.ic_action_remove_dark));
 			if(selectedRule == position){
 				label.setTypeface(null, Typeface.BOLD);
 				label.setTextSize(22);
@@ -127,7 +131,7 @@ public class OpeningHoursView {
 				label.setTextSize(20);
 			}
 
-			label.setText(item.toRuleString());
+			label.setText(item.toRuleString(false));
 			icon.setOnClickListener(new View.OnClickListener(){
 				@Override
 				public void onClick(View v) {
@@ -179,7 +183,7 @@ public class OpeningHoursView {
 			}
 
 		});
-		b.setPositiveButton(add ? ctx.getString(R.string.default_buttons_add) : ctx.getString(R.string.default_buttons_apply),
+		b.setPositiveButton(add ? ctx.getString(R.string.shared_string_add) : ctx.getString(R.string.shared_string_apply),
 				new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
@@ -199,7 +203,7 @@ public class OpeningHoursView {
 
 				});
 
-		b.setNegativeButton(ctx.getString(R.string.default_buttons_cancel), null);
+		b.setNegativeButton(ctx.getString(R.string.shared_string_cancel), null);
 
 		b.show();
 

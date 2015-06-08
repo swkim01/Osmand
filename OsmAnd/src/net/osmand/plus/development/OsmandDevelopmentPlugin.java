@@ -9,6 +9,7 @@ import net.osmand.plus.views.MapInfoLayer;
 import net.osmand.plus.views.OsmandMapLayer.DrawSettings;
 import net.osmand.plus.views.OsmandMapTileView;
 import net.osmand.plus.views.mapwidgets.TextInfoWidget;
+import android.app.Activity;
 import android.content.Intent;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
@@ -25,7 +26,7 @@ public class OsmandDevelopmentPlugin extends OsmandPlugin {
 	}
 	
 	@Override
-	public boolean init(OsmandApplication app) {
+	public boolean init(OsmandApplication app, Activity activity) {
 		return true;
 	}
 	
@@ -52,7 +53,7 @@ public class OsmandDevelopmentPlugin extends OsmandPlugin {
 		MapInfoLayer mapInfoLayer = activity.getMapLayers().getMapInfoLayer();
 		final OsmandMapTileView mv = activity.getMapView();
 		if (mapInfoLayer != null) {
-			fps = new TextInfoWidget(activity, 0, mapInfoLayer.getPaintText(), mapInfoLayer.getPaintSubText()) {
+			fps = new TextInfoWidget(activity) {
 				@Override
 				public boolean updateInfo(DrawSettings drawSettings) {
 					if(!mv.isMeasureFPS()) {
@@ -64,25 +65,25 @@ public class OsmandDevelopmentPlugin extends OsmandPlugin {
 					return true;
 				}
 			};
-			mapInfoLayer.getMapInfoControls().registerSideWidget(fps, R.drawable.widget_no_icon, R.drawable.widget_no_icon,
+			mapInfoLayer.registerSideWidget(fps, R.drawable.widget_no_icon,
 					R.string.map_widget_fps_info, "fps", false, 30);
 			mapInfoLayer.recreateControls();
 		}
 	}
-
+	
 	@Override
-	public void settingsActivityCreate(final SettingsActivity activity, PreferenceScreen screen) {
-		Preference grp = new Preference(activity);
-		grp.setTitle(R.string.debugging_and_development);
-		grp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				activity.startActivity(new Intent(activity, SettingsDevelopmentActivity.class));
-				return true;
-			}
-		});
-		screen.addPreference(grp);
+	public Class<? extends Activity> getSettingsActivity() {
+		return SettingsDevelopmentActivity.class;
+	}
+	
+	@Override
+	public int getLogoResourceId() {
+		return R.drawable.ic_plugin_developer;
+	}
+	
+	@Override
+	public int getAssetResourceName() {
+		return R.drawable.osmand_development;
 	}
 
 }

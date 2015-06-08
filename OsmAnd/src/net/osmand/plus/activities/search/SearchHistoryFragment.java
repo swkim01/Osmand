@@ -1,76 +1,117 @@
 package net.osmand.plus.activities.search;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import android.support.v4.app.ListFragment;
-import android.view.*;
 import net.osmand.data.LatLon;
-import net.osmand.plus.ContextMenuAdapter;
+import net.osmand.data.PointDescription;
+import net.osmand.plus.IconsCache;
 import net.osmand.plus.OsmAndFormatter;
+import net.osmand.plus.OsmAndLocationProvider.OsmAndCompassListener;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.R;
-import net.osmand.plus.SearchHistoryHelper;
-import net.osmand.plus.SearchHistoryHelper.HistoryEntry;
-import net.osmand.plus.activities.MapActivityActions;
+import net.osmand.plus.activities.OsmAndListFragment;
 import net.osmand.plus.activities.search.SearchActivity.SearchActivityChild;
+import net.osmand.plus.dashboard.DashLocationFragment;
 import net.osmand.plus.dialogs.DirectionsDialogs;
+import net.osmand.plus.helpers.SearchHistoryHelper;
+import net.osmand.plus.helpers.SearchHistoryHelper.HistoryEntry;
 import net.osmand.util.MapUtils;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.AlertDialog.Builder;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.support.v7.widget.Toolbar;
-import android.text.Spannable;
-import android.text.style.ForegroundColorSpan;
-import android.view.View.OnClickListener;
+import android.support.v7.widget.PopupMenu;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.TextView.BufferType;
 
 
-public class SearchHistoryFragment extends ListFragment implements SearchActivityChild {
+public class SearchHistoryFragment extends OsmAndListFragment implements SearchActivityChild, OsmAndCompassListener  {
 	private LatLon location;
 	private SearchHistoryHelper helper;
 	private Button clearButton;
 	public static final String SEARCH_LAT = SearchActivity.SEARCH_LAT;
 	public static final String SEARCH_LON = SearchActivity.SEARCH_LON;
 	private HistoryAdapter historyAdapter;
+	private Float heading;
+	private boolean searchAroundLocation;
+	private boolean compassRegistered;
+	private int screenOrientation;	
 
 	@Override
-	public void onViewCreated(View view, Bundle savedInstanceState) {
-		super.onViewCreated(view, savedInstanceState);
+	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+		super.onCreateView(inflater, container, savedInstanceState);
+		View view = inflater.inflate(R.layout.search_history, container, false);
+		clearButton = (Button) view.findViewById(R.id.clearAll);
+		clearButton.setText(R.string.shared_string_clear_all);
+		clearButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				clearWithConfirmation();
+			}
+		});
+		((ListView)view.findViewById(android.R.id.list)).setOnItemClickListener(new OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				onListItemClick((ListView) parent, view, position, id);
+			}
+		});
 		
+		return view;
 	}
+	
+	private void clearWithConfirmation() {
+		Builder bld = new AlertDialog.Builder(getActivity());
+		bld.setMessage(R.string.confirmation_to_clear_history);
+		bld.setPositiveButton(R.string.shared_string_yes, new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				clearWithoutConfirmation();				
+			}
+		});
+		bld.setNegativeButton(R.string.shared_string_no, null);
+		bld.show();
+	}
+
+	private void clearWithoutConfirmation() {
+		helper.removeAll();
+		historyAdapter.clear();
+		clearButton.setVisibility(View.GONE);
+	}
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		helper = SearchHistoryHelper.getInstance((OsmandApplication) getActivity().getApplicationContext());
 	}
-	
+
 	@Override
 	public void onActivityCreated(Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
 		historyAdapter = new HistoryAdapter(helper.getHistoryEntries());
-		clearButton = new Button(getActivity());
-		clearButton.setText(R.string.clear_all);
-		clearButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				helper.removeAll();
-				historyAdapter.clear();
-				clearButton.setVisibility(View.GONE);
-			}
-		});
-		getListView().addFooterView(clearButton);
 		setListAdapter(historyAdapter);
 		setHasOptionsMenu(true);
 	}
-	
-	
+
+
 	@Override
 	public void onResume() {
 		super.onResume();
@@ -92,16 +133,40 @@ public class SearchHistoryFragment extends ListFragment implements SearchActivit
 		if (location == null) {
 			location = ((OsmandApplication) activity.getApplication()).getSettings().getLastKnownMapLocation();
 		}
+		historyAdapter.clear();
+		for (HistoryEntry entry : helper.getHistoryEntries()) {
+			historyAdapter.add(entry);
+		}
 		locationUpdate(location);
 		clearButton.setVisibility(historyAdapter.isEmpty() ? View.GONE : View.VISIBLE);
-		
+		screenOrientation = DashLocationFragment.getScreenOrientation(getActivity());
 	}
 
 	@Override
 	public void locationUpdate(LatLon l) {
 		//location = l;
-		if(historyAdapter != null) {
+		if (getActivity() instanceof SearchActivity) {
+			if (((SearchActivity) getActivity()).isSearchAroundCurrentLocation() && l != null) {
+				if (!compassRegistered) {
+					((OsmandApplication) getActivity().getApplication()).getLocationProvider().addCompassListener(this);
+					compassRegistered = true;
+				}
+				searchAroundLocation = true;
+			} else {
+				searchAroundLocation = false;
+			}
+		}
+		if (historyAdapter != null) {
 			historyAdapter.updateLocation(l);
+		}
+	}
+	
+	@Override
+	public void onPause() {
+		super.onPause();
+		if(getActivity() instanceof SearchActivity) {
+			((OsmandApplication) getActivity().getApplication()).getLocationProvider().removeCompassListener(this);
+			compassRegistered = false;
 		}
 	}
 
@@ -113,23 +178,29 @@ public class SearchHistoryFragment extends ListFragment implements SearchActivit
 	}
 
 	private void selectModel(final HistoryEntry model, View v) {
-		ContextMenuAdapter qa = new ContextMenuAdapter(v.getContext());
-		qa.setAnchor(v);
-		String name = model.getName();
+		PointDescription name = model.getName();
+		boolean light = ((OsmandApplication) getActivity().getApplication()).getSettings().isLightContent();
+		final PopupMenu optionsMenu = new PopupMenu(getActivity(), v);
 		OsmandSettings settings = ((OsmandApplication) getActivity().getApplication()).getSettings();
-		OnClickListener onShow = new View.OnClickListener() {
+		DirectionsDialogs.createDirectionsActionsPopUpMenu(optionsMenu, new LatLon(model.getLat(), model.getLon()),
+				model, name, settings.getLastKnownMapZoom(), getActivity(), true);
+		MenuItem item = optionsMenu.getMenu().add(
+				R.string.shared_string_delete).setIcon(
+				getMyApplication().getIconsCache().getContentIcon(R.drawable.ic_action_delete_dark));
+		item.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
 			@Override
-			public void onClick(View v) {
-				helper.selectEntry(model);				
+			public boolean onMenuItemClick(MenuItem item) {
+				helper.remove(model);
+				historyAdapter.remove(model);
+				return true;
 			}
-		};
-		DirectionsDialogs.createDirectionsActions(qa, new LatLon(model.getLat(), model.getLon()),
-				model, name, settings.getLastKnownMapZoom(), getActivity(), false);
-		MapActivityActions.showObjectContextMenu(qa, getActivity(), onShow);
+		});
+		optionsMenu.show();
 	}
 
 	class HistoryAdapter extends ArrayAdapter<HistoryEntry> {
 		private LatLon location;
+		
 
 		public void updateLocation(LatLon l) {
 			location = l;
@@ -147,40 +218,96 @@ public class SearchHistoryFragment extends ListFragment implements SearchActivit
 				LayoutInflater inflater = getActivity().getLayoutInflater();
 				row = inflater.inflate(R.layout.search_history_list_item, parent, false);
 			}
-			TextView label = (TextView) row.findViewById(R.id.label);
-			String distance = "";
-			ImageButton icon = (ImageButton) row.findViewById(R.id.remove);
-			final HistoryEntry model = getItem(position);
-			if (location != null) {
-				int dist = (int) (MapUtils.getDistance(location, model.getLat(), model.getLon()));
-				distance = OsmAndFormatter.getFormattedDistance(dist, (OsmandApplication) getActivity().getApplication()) + "  ";
-			}
-			label.setText(distance + model.getName(), BufferType.SPANNABLE);
-			((Spannable) label.getText()).setSpan(new ForegroundColorSpan(getResources().getColor(R.color.color_distance)), 0, distance.length(), 0);
-			icon.setOnClickListener(new View.OnClickListener() {
+			final HistoryEntry historyEntry = getItem(position);
+			udpateHistoryItem(historyEntry, row, location, getActivity(), getMyApplication());
+			TextView distanceText = (TextView) row.findViewById(R.id.distance);
+			ImageView direction = (ImageView) row.findViewById(R.id.direction);
+			DashLocationFragment.updateLocationView(!searchAroundLocation, location, heading, direction, distanceText, 
+					historyEntry.getLat(), historyEntry.getLon(), screenOrientation, getMyApplication(), getActivity()); 
+			ImageButton options = (ImageButton) row.findViewById(R.id.options);
+			options.setImageDrawable(getMyApplication().getIconsCache().getContentIcon(R.drawable.ic_overflow_menu_white));
+			options.setVisibility(View.VISIBLE);
+			options.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View v) {
-					helper.remove(model);
-					historyAdapter.remove(model);
+					selectModel(historyEntry, v);
 				}
-
 			});
-			View.OnClickListener clickListener = new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					selectModel(model, v);
-				}
-			};
-
-			label.setOnClickListener(clickListener);
 			return row;
+		}
+	}
+	
+				
+	public static void udpateHistoryItem(final HistoryEntry historyEntry, View row,
+			LatLon location, Activity activity, OsmandApplication app) {
+		TextView nameText = (TextView) row.findViewById(R.id.name);
+		TextView distanceText = (TextView) row.findViewById(R.id.distance);
+		ImageView direction = (ImageView) row.findViewById(R.id.direction);
+		IconsCache ic = app.getIconsCache();
+		direction.setImageDrawable(ic.getIcon(R.drawable.ic_destination_arrow_white, R.color.color_distance));
+		String distance = "";
+		if (location != null) {
+			int dist = (int) (MapUtils.getDistance(location, historyEntry.getLat(), historyEntry.getLon()));
+			distance = OsmAndFormatter.getFormattedDistance(dist, (OsmandApplication) activity.getApplication()) + "  ";
+		}
+		distanceText.setText(distance);
+		PointDescription pd = historyEntry.getName();
+		nameText.setText(pd.getSimpleName(activity, false), BufferType.SPANNABLE);
+		ImageView icon = ((ImageView) row.findViewById(R.id.icon));
+
+		if (historyEntry.getName().isAddress()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_address));
+		} else if (historyEntry.getName().isFavorite()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_favorites));
+		} else if (historyEntry.getName().isLocation()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_coordinates));
+		} else if (historyEntry.getName().isPoi()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_info));
+		} else if (historyEntry.getName().isWpt()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_waypoint));
+		} else if (historyEntry.getName().isAudioNote()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_audio));
+		} else if (historyEntry.getName().isVideoNote()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_video));
+		}else if (historyEntry.getName().isPhotoNote()) {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_img));
+		}  else {
+			icon.setImageDrawable(ic.getContentIcon(R.drawable.ic_type_address));
+		}
+
+		String typeName = historyEntry.getName().getTypeName();
+		if (typeName != null && !typeName.isEmpty()) {
+			ImageView group = (ImageView) row.findViewById(R.id.type_name_icon);
+			group.setVisibility(View.VISIBLE);
+			group.setImageDrawable(ic.getContentIcon(R.drawable.ic_small_group));
+			((TextView) row.findViewById(R.id.type_name)).setText(typeName);
+		} else {
+			row.findViewById(R.id.type_name_icon).setVisibility(View.GONE);
+			((TextView) row.findViewById(R.id.type_name)).setText("");
 		}
 	}
 
 	@Override
 	public void onCreateOptionsMenu(Menu onCreate, MenuInflater inflater) {
-		if(getActivity() instanceof SearchActivity) {
-			 ((SearchActivity) getActivity()).getClearToolbar(false);
+		if (getActivity() instanceof SearchActivity) {
+			((SearchActivity) getActivity()).getClearToolbar(false);
+		}
+	}
+
+	public OsmandApplication getMyApplication() {
+		return (OsmandApplication) getActivity().getApplication();
+	}
+	
+	@Override
+	public void updateCompassValue(float value) {
+		// 99 in next line used to one-time initalize arrows (with reference vs. fixed-north direction) on non-compass
+		// devices
+		float lastHeading = heading != null ? heading : 99;
+		heading = value;
+		if (heading != null && Math.abs(MapUtils.degreesDiff(lastHeading, heading)) > 5) {
+			 historyAdapter.notifyDataSetChanged();
+		} else {
+			heading = lastHeading;
 		}
 	}
 }

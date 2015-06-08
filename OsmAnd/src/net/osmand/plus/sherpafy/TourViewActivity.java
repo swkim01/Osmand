@@ -1,27 +1,19 @@
 package net.osmand.plus.sherpafy;
 
-import java.util.WeakHashMap;
-
-import android.content.pm.ActivityInfo;
-import android.os.Build;
-import android.support.v4.view.MenuItemCompat;
-import android.support.v7.app.ActionBarActivity;
-import android.view.Menu;
-import android.view.MenuItem;
-import net.osmand.data.LatLon;
-import net.osmand.plus.OsmandApplication;
-import net.osmand.plus.R;
-import net.osmand.plus.download.DownloadActivity;
-import net.osmand.plus.sherpafy.TourInformation.StageFavorite;
-import net.osmand.plus.sherpafy.TourInformation.StageInformation;
+import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.view.GravityCompat;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -31,9 +23,19 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import net.osmand.data.LatLon;
+import net.osmand.plus.OsmandApplication;
+import net.osmand.plus.R;
+import net.osmand.plus.activities.OsmandActionBarActivity;
+import net.osmand.plus.download.DownloadActivity;
+import net.osmand.plus.sherpafy.TourInformation.StageFavorite;
+import net.osmand.plus.sherpafy.TourInformation.StageInformation;
+
+import java.util.WeakHashMap;
+
 /**
  */
-public class TourViewActivity extends ActionBarActivity {
+public class TourViewActivity extends OsmandActionBarActivity {
 
 	private enum viewState {
 		STATE_LOADING,
@@ -62,6 +64,7 @@ public class TourViewActivity extends ActionBarActivity {
 	private boolean refreshListAfterDownload;
 	private static Object selectedItem;
 
+	@SuppressLint("NewApi")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 //		if (!(getMyApplication().getAppCustomization() instanceof SherpafyCustomization)) {
@@ -81,8 +84,6 @@ public class TourViewActivity extends ActionBarActivity {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
 			getWindow().setUiOptions(ActivityInfo.UIOPTION_SPLIT_ACTION_BAR_WHEN_NARROW);
 		}
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-		getSupportActionBar().setHomeButtonEnabled(true);
 		getSupportActionBar().setTitle(R.string.sherpafy_app_name);
 
 		setContentView(R.layout.sherpafy_browse_tour);
@@ -107,8 +108,8 @@ public class TourViewActivity extends ActionBarActivity {
 			}
 		});
 
-		mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout, R.drawable.ic_navigation_drawer_light,
-				R.string.default_buttons_other_actions, R.string.close);
+		mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout, R.drawable.ic_navigation_drawer,
+				R.string.shared_string_more_actions, R.string.shared_string_close);
 		if (getMyApplication().isApplicationInitializing()) {
 			FragmentManager fragmentManager = getSupportFragmentManager();
 			fragmentManager.beginTransaction().replace(R.id.content_frame, new SherpafyLoadingFragment()).commit();
@@ -155,16 +156,16 @@ public class TourViewActivity extends ActionBarActivity {
 					tv.setText(getString(R.string.sherpafy_tours));
 				} else if (it instanceof TourInformation) {
 					if (selectedItem == it) {
-						imView.setImageResource(R.drawable.ic_action_ok_light);
+						imView.setImageResource(R.drawable.ic_action_done);
 					} else {
-						imView.setImageResource(R.drawable.ic_action_globus_light);
+						imView.setImageResource(R.drawable.ic_world_globe_dark);
 					}
 					tv.setText(((TourInformation) it).getName());
 				} else if (it instanceof StageInformation) {
 					if (customization.getSelectedStage() == it) {
-						imView.setImageResource(R.drawable.ic_action_gplay_over_light);
+						imView.setImageResource(R.drawable.ic_action_play_dark);
 					} else if (selectedItem == it) {
-						imView.setImageResource(R.drawable.ic_action_ok_light);
+						imView.setImageResource(R.drawable.ic_action_done);
 					} else {
 						final StageInformation stageInformation = (StageInformation) it;
 						boolean visited = stageInformation.getTour() == customization.getSelectedTour() &&
@@ -192,7 +193,7 @@ public class TourViewActivity extends ActionBarActivity {
 			getSupportActionBar().setTitle(R.string.sherpafy_tours);
 		} else if (state == viewState.STATE_TOUR_VIEW) {
 		}
-		invalidateOptionsMenu();
+//		invalidateOptionsMenu();
 	}
 
 
@@ -226,13 +227,11 @@ public class TourViewActivity extends ActionBarActivity {
 		}
 	}
 
-	public MenuItem createMenuItem(Menu m, int id, int titleRes, int iconLight, int iconDark, int menuItemType,
+	public MenuItem createMenuItem(Menu m, int id, int titleRes, int r, int menuItemType,
 								   final MenuItem.OnMenuItemClickListener listener) {
-		// int r = getMyApplication().getSettings().isLightActionBar() ? iconLight : iconDark;
-		int r = iconLight;
 		MenuItem menuItem = m.add(0, id, 0, titleRes);
 		if (r != 0) {
-			menuItem.setIcon(r);
+			menuItem.setIcon(getMyApplication().getIconsCache().getIcon(r));
 		}
 		MenuItemCompat.setShowAsAction(menuItem, menuItemType);
 		menuItem.setOnMenuItemClickListener(listener);

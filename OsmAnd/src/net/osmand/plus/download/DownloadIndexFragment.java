@@ -8,23 +8,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import android.support.v4.view.MenuItemCompat;
-import android.support.v7.app.ActionBar;
-import android.view.*;
 import net.osmand.access.AccessibleToast;
-import net.osmand.plus.OsmandPlugin;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.OsmandExpandableListFragment;
 import net.osmand.plus.base.BasicProgressAsyncTask;
-import net.osmand.plus.srtmplugin.SRTMPlugin;
-import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v7.app.ActionBar;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.SubMenu;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -58,7 +57,7 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 		listView.setAdapter(listAdapter);
 		setListView(listView);
 
-//		getDownloadActivity().getSupportActionBar().setTitle(R.string.local_index_download);
+//		getDownloadActivity().getSupportActionBar().setTitle(R.string.shared_string_download);
 		// recreation upon rotation is pgetaprevented in manifest file
 
 		filterText = (EditText) view.findViewById(R.id.search_box);
@@ -134,9 +133,9 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 		ActionBar actionBar = getDownloadActivity().getSupportActionBar();
 		final List<DownloadActivityType> downloadTypes = getDownloadActivity().getDownloadTypes();
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
-		ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<String>(actionBar.getThemedContext(), android.R.layout.simple_spinner_item,
-				toString(downloadTypes));
-		spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<String>(actionBar.getThemedContext(), R.layout.spinner_item,
+				toString(downloadTypes)) ;
+		spinnerAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
 		actionBar.setListNavigationCallbacks(spinnerAdapter, new ActionBar.OnNavigationListener() {
 
 			@Override
@@ -148,15 +147,14 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 
 		if (getMyApplication().getAppCustomization().showDownloadExtraActions()) {
 			if (SHOW_ONLY_RELOAD) {
-				MenuItem item = menu.add(0, RELOAD_ID, 0, R.string.update_downlod_list);
-				item.setIcon(isLightActionBar() ? R.drawable.ic_action_refresh_light :
-					R.drawable.ic_action_refresh_dark);
+				MenuItem item = menu.add(0, RELOAD_ID, 0, R.string.shared_string_refresh);
+				item.setIcon(R.drawable.ic_action_refresh_dark);
 				MenuItemCompat.setShowAsAction(item, MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
 			} else {
-				SubMenu s = menu.addSubMenu(0, MORE_ID, 0, R.string.default_buttons_other_actions);
-				s.add(0, RELOAD_ID, 0, R.string.update_downlod_list);
-				s.add(0, SELECT_ALL_ID, 0, R.string.select_all);
-				s.add(0, DESELECT_ALL_ID, 0, R.string.deselect_all);
+				SubMenu s = menu.addSubMenu(0, MORE_ID, 0, R.string.shared_string_more_actions);
+				s.add(0, RELOAD_ID, 0, R.string.shared_string_refresh);
+				s.add(0, SELECT_ALL_ID, 0, R.string.shared_string_select_all);
+				s.add(0, DESELECT_ALL_ID, 0, R.string.shared_string_deselect_all);
 
 //				s.setIcon(isLightActionBar() ? R.drawable.abs__ic_menu_moreoverflow_holo_light
 //						: R.drawable.abs__ic_menu_moreoverflow_holo_dark);
@@ -207,7 +205,7 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 		AccessibleToast.makeText(getDownloadActivity(), MessageFormat.format(getString(R.string.items_were_selected), selected), Toast.LENGTH_SHORT).show();
 		listAdapter.notifyDataSetInvalidated();
 		if(selected > 0){
-			getDownloadActivity().updateDownloadButton(true);
+			getDownloadActivity().updateDownloadButton();
 		}
 	}
 
@@ -221,7 +219,7 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 		if(ch.isChecked()){
 			ch.setChecked(!ch.isChecked());
 			getDownloadActivity().getEntriesToDownload().remove(e);
-			getDownloadActivity().updateDownloadButton(true);
+			getDownloadActivity().updateDownloadButton();
 			return true;
 		}
 		
@@ -230,7 +228,7 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 			// if(!fileToUnzip.exists()){
 			// builder.setMessage(MessageFormat.format(getString(R.string.download_question), baseName, extractDateAndSize(e.getValue())));
 			getDownloadActivity().getEntriesToDownload().put(e, download);
-			getDownloadActivity().updateDownloadButton(true);
+			getDownloadActivity().updateDownloadButton();
 			ch.setChecked(!ch.isChecked());
 		}
 		return true;
@@ -305,7 +303,6 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 	public void categorizationFinished(List<IndexItem> filtered, List<IndexItemCategory> cats) {
 		Map<String, String> indexActivatedFileNames = getDownloadActivity().getIndexActivatedFileNames();
 		Map<String, String> indexFileNames = getDownloadActivity().getIndexFileNames();
-		DownloadActivityType type = getDownloadActivity().getDownloadType();
 		DownloadIndexAdapter a = ((DownloadIndexAdapter) getExpandableListAdapter());
 		if (a == null){
 			return;
@@ -314,25 +311,5 @@ public class DownloadIndexFragment extends OsmandExpandableListFragment {
 		a.setIndexFiles(filtered, cats);
 		a.notifyDataSetChanged();
 		a.getFilter().filter(getFilterText());
-		if ((type == DownloadActivityType.SRTM_COUNTRY_FILE || type == DownloadActivityType.HILLSHADE_FILE)
-				&& OsmandPlugin.getEnabledPlugin(SRTMPlugin.class) instanceof SRTMPlugin
-				&& !OsmandPlugin.getEnabledPlugin(SRTMPlugin.class).isPaid()) {
-			AlertDialog.Builder msg = new AlertDialog.Builder(getDownloadActivity());
-			msg.setTitle(R.string.srtm_paid_version_title);
-			msg.setMessage(R.string.srtm_paid_version_msg);
-			msg.setNegativeButton(R.string.button_upgrade_osmandplus, new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface dialog, int which) {
-					Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=pname:net.osmand.srtmPlugin.paid"));
-					try {
-						getDownloadActivity().startActivity(intent);
-					} catch (ActivityNotFoundException e) {
-					}
-				}
-			});
-			msg.setPositiveButton(R.string.default_buttons_ok, null);
-			msg.show();
-		}
-
 	}
 }

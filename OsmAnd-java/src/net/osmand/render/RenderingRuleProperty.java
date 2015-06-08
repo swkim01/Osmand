@@ -33,7 +33,7 @@ public class RenderingRuleProperty {
 	protected String[] possibleValues;
 	protected String category;
 	
-	private RenderingRuleProperty(String attrName, int type, boolean input){
+	protected RenderingRuleProperty(String attrName, int type, boolean input){
 		this.attrName = attrName;
 		this.type = type;
 		this.input = input;
@@ -295,14 +295,12 @@ public class RenderingRuleProperty {
 						}
 					}
 				} else {
-					String ts = val.substring(0, k);
-					if (ts != null) {
-						int[] additionalTypes = obj.getAdditionalTypes();
-						for (int i = 0; i < additionalTypes.length; i++) {
-							TagValuePair vp = obj.getMapIndex().decodeType(additionalTypes[i]);
-							if (vp != null && ts.equals(vp.tag)) {
-								return true;
-							}
+					String ts = val;
+					int[] additionalTypes = obj.getAdditionalTypes();
+					for (int i = 0; i < additionalTypes.length; i++) {
+						TagValuePair vp = obj.getMapIndex().decodeType(additionalTypes[i]);
+						if (vp != null && ts.equals(vp.tag)) {
+							return true;
 						}
 					}
 				}

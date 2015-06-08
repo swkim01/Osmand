@@ -1,15 +1,27 @@
 apply plugin: 'java'
 
-jar {
-    sourceSets {
-        main {
-            java {
-                srcDirs = ["src"]
-            }
-        }
-    }
+sourceSets {
+	main {
+		java {
+			srcDirs = ["src"]
+		}
+	}
+}
+
+configurations {
+	android
+}
+
+task androidJar(type: Jar) {
+	appendix = "android"
+	from sourceSets.main.output
+	exclude("**/PlatformUtil.*")
+}
+
+artifacts {
+	android androidJar
 }
 
 dependencies {
-    compile fileTree(dir: "libs", include: ["*.jar"])
+	compile fileTree(dir: "libs", include: ["*.jar"])
 }

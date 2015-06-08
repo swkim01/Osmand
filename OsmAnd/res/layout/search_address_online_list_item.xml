@@ -2,19 +2,22 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:orientation="horizontal">
+    android:background="?attr/expandable_list_item_background"
+    android:minHeight="@dimen/list_item_height"
+    android:orientation="horizontal"
+    android:paddingLeft="@dimen/list_content_padding"
+    android:paddingRight="@dimen/list_content_padding">
 
     <TextView
         android:id="@+id/distance_label"
-        style="@style/ListText.Small"
+        android:textSize="@dimen/default_list_text_size"
         android:layout_width="80dp"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="5dp"
         android:gravity="left" />
 
     <TextView
         android:id="@+id/label"
-        style="@style/ListText.Small"
+        android:textSize="@dimen/default_list_text_size"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content" />
 

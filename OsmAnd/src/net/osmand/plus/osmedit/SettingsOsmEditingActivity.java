@@ -1,8 +1,11 @@
 package net.osmand.plus.osmedit;
 
 
+import net.osmand.plus.OsmAndAppCustomization;
+import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.SettingsBaseActivity;
+import net.osmand.plus.myplaces.FavoritesActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
@@ -17,6 +20,7 @@ public class SettingsOsmEditingActivity extends SettingsBaseActivity {
 
 	@Override
     public void onCreate(Bundle savedInstanceState) {
+		((OsmandApplication) getApplication()).applyTheme(this);
 		super.onCreate(savedInstanceState);
 		getToolbar().setTitle(R.string.osm_settings);
 		PreferenceScreen grp = getPreferenceScreen();
@@ -38,7 +42,12 @@ public class SettingsOsmEditingActivity extends SettingsBaseActivity {
 		pref.setOnPreferenceClickListener(new OnPreferenceClickListener() {
 			@Override
 			public boolean onPreferenceClick(Preference preference) {
-				startActivity(new Intent(SettingsOsmEditingActivity.this, LocalOpenstreetmapActivity.class));
+				OsmAndAppCustomization appCustomization = getMyApplication().getAppCustomization();
+				final Intent favorites = new Intent(SettingsOsmEditingActivity.this,
+						appCustomization.getFavoritesActivity());
+				favorites.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+				getMyApplication().getSettings().FAVORITES_TAB.set(R.string.osm_edits);
+				startActivity(favorites);
 				return true;
 			}
 		});

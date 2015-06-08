@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.osmand.PlatformUtil;
+import net.osmand.osm.io.NetworkUtils;
 import net.osmand.util.Algorithms;
 import net.osmand.util.Bd02MapUtils;
 import net.osmand.util.DaumMapUtils;
@@ -39,7 +40,7 @@ import bsh.Interpreter;
 
 public class TileSourceManager {
 	private static final Log log = PlatformUtil.getLog(TileSourceManager.class);
-	private static final String RULE_BEANSHELL = "beanshell";
+	public static final String RULE_BEANSHELL = "beanshell";
 	public static final String RULE_YANDEX_TRAFFIC = "yandex_traffic";
 	private static final String RULE_WMS = "wms_tile";
 
@@ -84,6 +85,14 @@ public class TileSourceManager {
 			this.bitDensity = bitDensity;
 		}
 		
+		public static String normalizeUrl(String url){
+			if(url != null){
+				url = url.replaceAll("\\{\\$z\\}", "{0}"); //$NON-NLS-1$ //$NON-NLS-2$
+				url = url.replaceAll("\\{\\$x\\}", "{1}"); //$NON-NLS-1$//$NON-NLS-2$
+				url = url.replaceAll("\\{\\$y\\}", "{2}"); //$NON-NLS-1$ //$NON-NLS-2$
+			}
+			return url;
+		}
 		public void setMinZoom(int minZoom) {
 			this.minZoom = minZoom;
 		}
@@ -374,9 +383,10 @@ public class TileSourceManager {
 							new FileInputStream(readUrl), "UTF-8")); //$NON-NLS-1$
 					url = reader.readLine();
 					// 
-					url = url.replaceAll("\\{\\$z\\}", "{0}"); //$NON-NLS-1$ //$NON-NLS-2$
-					url = url.replaceAll("\\{\\$x\\}", "{1}"); //$NON-NLS-1$//$NON-NLS-2$
-					url = url.replaceAll("\\{\\$y\\}", "{2}"); //$NON-NLS-1$ //$NON-NLS-2$
+					//url = url.replaceAll("\\{\\$z\\}", "{0}"); //$NON-NLS-1$ //$NON-NLS-2$
+					//url = url.replaceAll("\\{\\$x\\}", "{1}"); //$NON-NLS-1$//$NON-NLS-2$
+					//url = url.replaceAll("\\{\\$y\\}", "{2}"); //$NON-NLS-1$ //$NON-NLS-2$
+					url = TileSourceTemplate.normalizeUrl(url);
 					reader.close();
 				}
 			} catch (IOException e) {
@@ -421,7 +431,7 @@ public class TileSourceManager {
 	}
 
 	public static TileSourceTemplate getMapnikSource(){
-		return new TileSourceTemplate("Mapnik", "http://mapnik.osmand.net/{0}/{1}/{2}.png", ".png", 19, 1, 256, 8, 18000);  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
+		return new TileSourceTemplate("OsmAnd (online tiles)", "http://tile.osmand.net/hd/{0}/{1}/{2}.png", ".png", 19, 1, 512, 8, 18000);  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	public static TileSourceTemplate getCycleMapSource(){
@@ -431,7 +441,7 @@ public class TileSourceManager {
 
 	public static List<TileSourceTemplate> downloadTileSourceTemplates(String versionAsUrl) {
 		try {
-			URLConnection connection = new URL("http://download.osmand.net//tile_sources.php?" + versionAsUrl).openConnection();
+			URLConnection connection = NetworkUtils.getHttpURLConnection("http://download.osmand.net//tile_sources.php?" + versionAsUrl);
 			return createTileSourceTemplates(connection.getInputStream());
 		} catch (IOException e) {
 			log.error("Exception while downloading tile sources", e);
@@ -543,9 +553,12 @@ return createTileSourceTemplates(new FileInputStream(customTiles));
 		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
 			return null;
 		}
-		if(urlTemplate != null){
-			urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
-		}
+		//As I see, here is no changes to urlTemplate  
+		//if(urlTemplate != null){
+			//urlTemplate.replace("${x}", "{1}").replace("${y}", "{2}").replace("${z}", "{0}");
+		//}
+		urlTemplate = TileSourceTemplate.normalizeUrl(urlTemplate);
+
 		int maxZoom = parseInt(attributes, "max_zoom", 18);
 		int minZoom = parseInt(attributes, "min_zoom", 5);
 		int tileSize = parseInt(attributes, "tile_size", 256);

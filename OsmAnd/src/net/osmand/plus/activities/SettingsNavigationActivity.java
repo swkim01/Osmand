@@ -7,6 +7,7 @@ import java.util.Map;
 
 import net.osmand.plus.ApplicationMode;
 import net.osmand.plus.DeviceAdminRecv;
+import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.OsmandSettings.AutoZoomMap;
 import net.osmand.plus.OsmandSettings.OsmandPreference;
@@ -45,6 +46,7 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 	
 	private List<RoutingParameter> avoidParameters = new ArrayList<RoutingParameter>();
 	private List<RoutingParameter> preferParameters = new ArrayList<RoutingParameter>();
+	public static final String INTENT_SKIP_DIALOG = "INTENT_SKIP_DIALOG"; 
 	
 	public SettingsNavigationActivity() {
 		super(true);
@@ -52,6 +54,7 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 
 	@Override
     public void onCreate(Bundle savedInstanceState) {
+		((OsmandApplication) getApplication()).applyTheme(this);
 		super.onCreate(savedInstanceState);
 		getToolbar().setTitle(R.string.routing_settings);
 	
@@ -136,14 +139,14 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 		// screen power save option:
 		Integer[] screenPowerSaveValues = new Integer[] { 0, 5, 10, 15, 20, 30, 45, 60 };
 		String[] screenPowerSaveNames = new String[screenPowerSaveValues.length];
-		screenPowerSaveNames[0] = getString(R.string.wake_on_voice_never);
+		screenPowerSaveNames[0] = getString(R.string.shared_string_never);
 		for (int i = 1; i < screenPowerSaveValues.length; i++) {
 			screenPowerSaveNames[i] = screenPowerSaveValues[i] + " "
 					+ getString(R.string.int_seconds);
 		}
 		registerListPreference(settings.WAKE_ON_VOICE_INT, screen, screenPowerSaveNames, screenPowerSaveValues);
         
-        registerBooleanPreference(settings.SHOW_ZOOM_BUTTONS_NAVIGATION, screen);
+//         registerBooleanPreference(settings.SHOW_ZOOM_BUTTONS_NAVIGATION, screen);
 
 		autoZoomMapPreference = (ListPreference) screen.findPreference(settings.AUTO_ZOOM_MAP.getId());
 		autoZoomMapPreference.setOnPreferenceChangeListener(this);
@@ -187,13 +190,26 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 		if (!mode.isDerivedRoutingFrom(ApplicationMode.CAR)) {
 			category.removePreference(speedLimitExceed);
 		}
+		
+		Integer[] delayIntervals = new Integer[] { -1, 3, 5, 7, 10, 15, 20 };
+		String[] delayIntervalNames = new String[delayIntervals.length];
+		for (int i = 0; i < delayIntervals.length; i++) {
+			if (i == 0) {
+				delayIntervalNames[i] = getString(R.string.auto_follow_route_never);
+			} else {
+				delayIntervalNames[i] = delayIntervals[i] + " " + getString(R.string.int_seconds);
+			}
+		}
+		registerListPreference(settings.DELAY_TO_START_NAVIGATION, screen, delayIntervalNames, delayIntervals);
 
 
-		profileDialog();
+		if(getIntent() != null && getIntent().hasExtra(INTENT_SKIP_DIALOG)) {
+			setSelectedAppMode(settings.getApplicationMode());
+		} else {
+			profileDialog();
+		}
 	}
 	
-	
-
 
 	private void prepareRoutingPrefs(PreferenceScreen screen) {
 		PreferenceCategory cat = (PreferenceCategory) screen.findPreference("routing_preferences");
@@ -334,7 +350,7 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 					settings.SHOW_PEDESTRIAN, settings.SHOW_CAMERAS, settings.SHOW_LANES }, preference.getTitle());
 			return true;
 		} else if (preference == speakAlarms) {
-			showBooleanSettings(new String[] { getString(R.string.speak_street_names), getString(R.string.speak_traffic_warnings),
+			AlertDialog dlg = showBooleanSettings(new String[] { getString(R.string.speak_street_names), getString(R.string.speak_traffic_warnings),
 					getString(R.string.speak_pedestrian), getString(R.string.speak_speed_limit),
 					getString(R.string.speak_cameras),
 					getString(R.string.announce_gpx_waypoints),
@@ -344,12 +360,39 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 					settings.SPEAK_PEDESTRIAN, settings.SPEAK_SPEED_LIMIT,
 					settings.SPEAK_SPEED_CAMERA,
 					settings.ANNOUNCE_WPT, settings.ANNOUNCE_NEARBY_FAVORITES, settings.ANNOUNCE_NEARBY_POI}, preference.getTitle());
+			if (!settings.SPEAK_SPEED_CAMERA.get()) {
+				dlg.setOnDismissListener(new DialogInterface.OnDismissListener() {
+
+					@Override
+					public void onDismiss(DialogInterface dialog) {
+						if (settings.SPEAK_SPEED_CAMERA.get()) {
+							settings.SPEAK_SPEED_CAMERA.set(false);
+							confirmSpeedCamerasDlg();
+						}
+					}
+
+				});
+			}
 			return true;
 		}
 		return false;
 	}
+	
+	private void confirmSpeedCamerasDlg() {
+		Builder bld = new AlertDialog.Builder(this);
+		bld.setMessage(R.string.confirm_usage_speed_cameras);
+		bld.setPositiveButton(R.string.shared_string_yes, new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				settings.SPEAK_SPEED_CAMERA.set(true);				
+			}
+		});
+		bld.setNegativeButton(R.string.shared_string_cancel, null);
+		bld.show();
+	}
 
-	public void showBooleanSettings(String[] vals, final OsmandPreference<Boolean>[] prefs, final CharSequence title) {
+	public AlertDialog showBooleanSettings(String[] vals, final OsmandPreference<Boolean>[] prefs, final CharSequence title) {
 		Builder bld = new AlertDialog.Builder(this);
 		boolean[] checkedItems = new boolean[prefs.length];
 		for (int i = 0; i < prefs.length; i++) {
@@ -371,9 +414,9 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 		
 		bld.setTitle(title);
 		
-		bld.setNegativeButton(R.string.default_buttons_cancel, null);
+		bld.setNegativeButton(R.string.shared_string_cancel, null);
 		
-		bld.setPositiveButton(R.string.default_buttons_ok, new DialogInterface.OnClickListener() {
+		bld.setPositiveButton(R.string.shared_string_ok, new DialogInterface.OnClickListener() {
 		    public void onClick(DialogInterface dialog, int whichButton) {
 				for (int i = 0; i < prefs.length; i++) {
 					prefs[i].set(tempPrefs[i]);
@@ -381,7 +424,7 @@ public class SettingsNavigationActivity extends SettingsBaseActivity {
 		    }
 		});
 		
-		bld.show();
+		return bld.show();
 	}
 
 	

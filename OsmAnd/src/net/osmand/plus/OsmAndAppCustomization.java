@@ -9,15 +9,15 @@ import net.osmand.IProgress;
 import net.osmand.IndexConstants;
 import net.osmand.Location;
 import net.osmand.data.LocationPoint;
-import net.osmand.plus.activities.MainMenuActivity;
-import net.osmand.plus.activities.FavouritesActivity;
 import net.osmand.plus.activities.MapActivity;
 import net.osmand.plus.activities.PluginsActivity;
 import net.osmand.plus.activities.SettingsActivity;
+import net.osmand.plus.activities.TrackActivity;
 import net.osmand.plus.activities.search.SearchActivity;
 import net.osmand.plus.download.DownloadActivity;
 import net.osmand.plus.download.DownloadActivityType;
 import net.osmand.plus.helpers.WaypointHelper;
+import net.osmand.plus.myplaces.FavoritesActivity;
 import net.osmand.plus.routing.RouteCalculationResult;
 import net.osmand.plus.views.OsmandMapTileView;
 import android.app.Activity;
@@ -60,13 +60,14 @@ public class OsmAndAppCustomization {
 		return SearchActivity.class;
 	}
 	
-	public Class<FavouritesActivity> getFavoritesActivity(){
-		return FavouritesActivity.class;
+	public Class<TrackActivity> getTrackActivity(){
+		return TrackActivity.class;
+	}
+	
+	public Class<FavoritesActivity> getFavoritesActivity(){
+		return FavoritesActivity.class;
 	}
 
-	public Class<MainMenuActivity> getMainMenuActivity() {
-		return MainMenuActivity.class;
-	}
 	
 	public Class<? extends Activity> getDownloadIndexActivity() {
 		return DownloadActivity.class;
@@ -141,12 +142,6 @@ public class OsmAndAppCustomization {
 		return true;
 	}
 
-
-	public File getExternalStorageDir() {
-		return osmandSettings.getExternalStorageDirectory();
-	}
-
-	public boolean showNavigationControls() { return true;}
 
 	public boolean onlyTourDownload() {
 		return false;

@@ -4,6 +4,7 @@ import java.util.List;
 
 import net.osmand.Location;
 import net.osmand.StateChangedListener;
+import net.osmand.ValueHolder;
 import net.osmand.data.RotatedTileBox;
 import net.osmand.map.IMapLocationListener;
 import net.osmand.plus.OsmAndConstants;
@@ -15,6 +16,7 @@ import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.OsmandSettings.AutoZoomMap;
 import net.osmand.plus.R;
 import net.osmand.plus.TargetPointsHelper.TargetPoint;
+import net.osmand.plus.dashboard.DashboardOnMap;
 import net.osmand.plus.routing.RoutingHelper;
 import net.osmand.plus.routing.RoutingHelper.IRouteInformationListener;
 import net.osmand.plus.views.AnimateDraggingMapThread;
@@ -29,6 +31,7 @@ public class MapViewTrackingUtilities implements OsmAndLocationListener, IMapLoc
 	private long lastTimeAutoZooming = 0;
 	private boolean sensorRegistered = false;
 	private OsmandMapTileView mapView;
+	private DashboardOnMap dashboard;
 	private OsmandSettings settings;
 	private OsmandApplication app;
 	// by default turn off causing unexpected movements due to network establishing
@@ -80,6 +83,13 @@ public class MapViewTrackingUtilities implements OsmAndLocationListener, IMapLoc
 				mapView.refreshMap();
 			}
 		}
+		if(dashboard != null) {
+			dashboard.updateCompassValue(val);
+		}
+	}
+	
+	public void setDashboard(DashboardOnMap dashboard) {
+		this.dashboard = dashboard;
 	}
 	
 	@Override
@@ -120,6 +130,10 @@ public class MapViewTrackingUtilities implements OsmAndLocationListener, IMapLoc
 			}
 			// When location is changed we need to refresh map in order to show movement!
 			mapView.refreshMap();
+		}
+		
+		if(dashboard != null) {
+			dashboard.updateMyLocation(location);
 		}
 	}
 
@@ -291,7 +305,7 @@ public class MapViewTrackingUtilities implements OsmAndLocationListener, IMapLoc
 	}
 
 	@Override
-	public void newRouteIsCalculated(boolean newRoute) {
+	public void newRouteIsCalculated(boolean newRoute, ValueHolder<Boolean> showToast) {
 		RoutingHelper rh = app.getRoutingHelper();
 		if(newRoute && rh.isRoutePlanningMode() && mapView != null) {
 			RotatedTileBox rt = mapView.getCurrentRotatedTileBox();

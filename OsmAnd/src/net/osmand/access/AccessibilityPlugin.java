@@ -4,11 +4,7 @@ import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.MapActivity;
-import net.osmand.plus.activities.SettingsActivity;
-import android.content.Intent;
-import android.preference.Preference;
-import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceScreen;
+import android.app.Activity;
 
 public class AccessibilityPlugin extends OsmandPlugin {
 	private static final String ID = "osmand.accessibility";
@@ -19,7 +15,7 @@ public class AccessibilityPlugin extends OsmandPlugin {
 	}
 	
 	@Override
-	public boolean init(OsmandApplication app) {
+	public boolean init(OsmandApplication app, Activity activity) {
 		return true;
 	}
 	
@@ -39,23 +35,20 @@ public class AccessibilityPlugin extends OsmandPlugin {
 	public void registerLayers(MapActivity activity) {
 	}
 	
+	
 	@Override
-	public void settingsActivityCreate(final SettingsActivity activity, final PreferenceScreen screen) {
-		Preference grp = new Preference(activity);
-		grp.setTitle(R.string.accessibility_preferences);
-		grp.setSummary(R.string.accessibility_preferences_descr);
-		grp.setKey("accessibility_preferences");
-		grp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				activity.startActivity(new Intent(activity, SettingsAccessibilityActivity.class));
-				return true;
-			}
-		});
-		screen.addPreference(grp);
-
+	public Class<? extends Activity> getSettingsActivity() {
+		return SettingsAccessibilityActivity.class;
 	}
 
 
+	@Override
+	public int getAssetResourceName() {
+		return 0;
+	}
+	
+	@Override
+	public int getLogoResourceId() {
+		return R.drawable.ic_plugin_accessibility;
+	}
 }

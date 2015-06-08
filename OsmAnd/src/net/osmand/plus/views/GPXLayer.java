@@ -1,11 +1,14 @@
 package net.osmand.plus.views;
 
+import gnu.trove.list.array.TIntArrayList;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import net.osmand.access.AccessibleToast;
 import net.osmand.data.LatLon;
+import net.osmand.data.PointDescription;
 import net.osmand.data.QuadRect;
 import net.osmand.data.RotatedTileBox;
 import net.osmand.plus.GPXUtilities.GPXFile;
@@ -250,13 +253,14 @@ public class GPXLayer extends OsmandMapLayer implements ContextMenuLayer.IContex
 				for (WptPt o : pts) {
 					boolean visit = isPointVisited(o);
 					int pointColor = visit ? visitedColor : o.getColor(fcolor);
-					FavoriteImageDrawable fid = FavoriteImageDrawable.getOrCreate(view.getContext(), pointColor);
+					FavoriteImageDrawable fid = FavoriteImageDrawable.getOrCreate(view.getContext(), pointColor, 
+							tileBox.getDensity());
 					if (o.lat >= latLonBounds.bottom && o.lat <= latLonBounds.top
 							&& o.lon >= latLonBounds.left && o.lon <= latLonBounds.right) {
 						cache.add(o);
 						int x = (int) tileBox.getPixXFromLatLon(o.lat, o.lon);
 						int y = (int) tileBox.getPixYFromLatLon(o.lat, o.lon);
-						fid.drawBitmapInCenter(canvas, x, y, tileBox.getDensity());
+						fid.drawBitmapInCenter(canvas, x, y);
 //							canvas.drawBitmap(favoriteIcon, x - favoriteIcon.getWidth() / 2,
 //									y - favoriteIcon.getHeight(), paint);
 					}
@@ -304,7 +308,7 @@ public class GPXLayer extends OsmandMapLayer implements ContextMenuLayer.IContex
 				WptPt ls = l.get(i);
 				if (startIndex == -1) {
 					if (ls.lat >= latLonBounds.bottom - 0.1 && ls.lat <= latLonBounds.top + 0.1  && ls.lon >= latLonBounds.left - 0.1
-							&& ls.lon <= latLonBounds.right + 0.1 && !isPointVisited(ls)) {
+							&& ls.lon <= latLonBounds.right + 0.1) {
 						startIndex = i > 0 ? i - 1 : i;
 					}
 				} else if (!(latLonBounds.left <= ls.lon + 0.1 && ls.lon - 0.1 <= latLonBounds.right
@@ -326,18 +330,20 @@ public class GPXLayer extends OsmandMapLayer implements ContextMenuLayer.IContex
 
 	
 	private void drawSegment(Canvas canvas, RotatedTileBox tb, List<WptPt> l, int startIndex, int endIndex) {
-		int px = tb.getPixXFromLonNoRot(l.get(startIndex).lon, l.get(startIndex).lat);
-		int py = tb.getPixYFromLatNoRot(l.get(startIndex).lon, l.get(startIndex).lat);
-		path.moveTo(px, py);
-		for (int i = startIndex + 1; i <= endIndex; i++) {
+		TIntArrayList tx = new TIntArrayList();
+		TIntArrayList ty = new TIntArrayList();
+		canvas.rotate(-tb.getRotate(), tb.getCenterPixelX(), tb.getCenterPixelY());
+
+		for (int i = startIndex; i <= endIndex; i++) {
 			WptPt p = l.get(i);
-			if(isPointVisited(p)) {
-				continue;
-			}
-			int x = tb.getPixXFromLonNoRot(p.lon, p.lat);
-			int y = tb.getPixYFromLatNoRot(p.lon, p.lat);
-			path.lineTo(x, y);
+			int x = (int) tb.getPixXFromLatLon(p.lat, p.lon);
+			int y = (int) tb.getPixYFromLatLon(p.lat, p.lon);
+//			int x = tb.getPixXFromLonNoRot(p.lon);
+//			int y = tb.getPixYFromLatNoRot(p.lat);
+			tx.add(x);
+			ty.add(y);
 		}
+		calculatePath(tb, tx, ty, path);
 		if(isPaint_1) {
 			canvas.drawPath(path, paint_1);
 		}
@@ -348,6 +354,7 @@ public class GPXLayer extends OsmandMapLayer implements ContextMenuLayer.IContex
 		if(isPaint2) {
 			canvas.drawPath(path, paint2);
 		}
+		canvas.rotate(tb.getRotate(), tb.getCenterPixelX(), tb.getCenterPixelY());
 		
 	}
 	
@@ -403,9 +410,9 @@ public class GPXLayer extends OsmandMapLayer implements ContextMenuLayer.IContex
 	}
 	
 	@Override
-	public String getObjectName(Object o) {
+	public PointDescription getObjectName(Object o) {
 		if(o instanceof WptPt){
-			return ((WptPt)o).name; //$NON-NLS-1$
+			return new PointDescription(PointDescription.POINT_TYPE_WPT, ((WptPt)o).name); //$NON-NLS-1$
 		}
 		return null;
 	}

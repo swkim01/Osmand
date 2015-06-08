@@ -12,7 +12,7 @@
     <ImageView
         android:id="@+id/waypoint_icon"
         android:layout_marginLeft="8dp"
-        android:src="@drawable/list_favorite"
+        android:src="@drawable/ic_action_fav_dark"
         android:layout_height="25dp"
         android:layout_width="25dp"
         android:layout_gravity="center_vertical" />
@@ -23,10 +23,10 @@
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
         android:layout_gravity="center_vertical"
-        android:textColor="@color/distance_color"
+        android:textColor="@color/wpt_distance_color"
         android:maxLines="2"
         android:textStyle="bold"
-        android:textSize="15sp"/>
+        android:textSize="@dimen/default_desc_text_size"/>
 
     <TextView
         android:id="@+id/waypoint_text"
@@ -37,13 +37,13 @@
         android:ellipsize="end"
         android:layout_gravity="center_vertical"
         android:layout_weight="1"
-        android:textSize="18sp" />
+        android:textSize="@dimen/default_list_text_size" />
 
     <ImageButton
         android:id="@+id/all_points"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="@string/more"
+        android:contentDescription="@string/shared_string_more"
         android:layout_gravity="center_vertical"
         android:visibility="gone"
         android:focusable="false"
@@ -54,7 +54,7 @@
         android:id="@+id/info_close"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="@string/close"
+        android:contentDescription="@string/shared_string_close"
         android:layout_gravity="center_vertical"
         android:layout_marginRight="4dp"
         style="@style/Widget.AppCompat.ActionButton"

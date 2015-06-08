@@ -13,7 +13,7 @@ public class Version {
 	
 	
 	public static boolean isGpsStatusEnabled(OsmandApplication ctx) {
-		return ctx.getString(R.string.versionFeatures).contains("+gps_status") && !isBlackberry(ctx);
+		return isGooglePlayEnabled(ctx) && !isBlackberry(ctx);
 	}
 	
 	public static boolean isBlackberry(OsmandApplication ctx) {
@@ -33,24 +33,12 @@ public class Version {
 		return "http://osmand.net/apps?"; 
 	}
 	
-	public static boolean isAmazonEnabled(OsmandApplication ctx) {
+	private static boolean isAmazonEnabled(OsmandApplication ctx) {
 		return ctx.getString(R.string.versionFeatures).contains("+amazon");
 	}
 	
-	public static boolean isGooglePlayEnabled(OsmandApplication ctx) {
+	private static boolean isGooglePlayEnabled(OsmandApplication ctx) {
 		return ctx.getString(R.string.versionFeatures).contains("+play_market");
-	}
-	
-	public static boolean isFreeVersionEnabled(OsmandApplication ctx) {
-		return ctx.getString(R.string.versionFeatures).contains("+free_version");
-	}
-	
-	public static boolean isParkingPluginInlined(OsmandApplication ctx) {
-		return ctx.getString(R.string.versionFeatures).contains("+parking_plugin");
-	}
-	
-	public static boolean isRouteNavPluginInlined(OsmandApplication ctx) {
-		return ctx.getString(R.string.versionFeatures).contains("+route_nav");
 	}
 	
 	public static boolean isSherpafy(OsmandApplication ctx) {
@@ -79,6 +67,10 @@ public class Version {
 		Version v = getVersion(ctx);
 		return v.appVersion;
 	}
+
+	public static String getBuildAppEdition(OsmandApplication ctx){
+		return ctx.getString(R.string.app_edition);
+	}
 	
 	public static String getAppName(OsmandApplication ctx){
 		Version v = getVersion(ctx);
@@ -99,13 +91,12 @@ public class Version {
 	}
 	
 	public static boolean isFreeVersion(OsmandApplication ctx){
-		return ctx.getPackageName().equals(FREE_VERSION_NAME) || isFreeVersionEnabled(ctx);
+		return ctx.getPackageName().equals(FREE_VERSION_NAME);
 		
 	}
 	
 	public static boolean isDeveloperVersion(OsmandApplication ctx){
-		return "osmand~".equalsIgnoreCase(getAppName(ctx));
-		
+		return getAppName(ctx).contains("~");
 	}
 	
 	public static String getVersionForTracker(OsmandApplication ctx) {

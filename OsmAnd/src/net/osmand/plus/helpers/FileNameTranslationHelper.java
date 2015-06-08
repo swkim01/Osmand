@@ -68,9 +68,9 @@ public class FileNameTranslationHelper {
 		int index = wikiWord.indexOf("(");
 		if (index >= 0) {
 			//removing word in "()" from recourse file
-			return wikiWord.substring(0, index) + wikiName;
+			return wikiName + " " + wikiWord.substring(0, index).trim();
 		}
-		return ctx.getString(R.string.amenity_type_osmwiki) + " " + wikiName;
+		return  wikiName + " " + ctx.getString(R.string.amenity_type_osmwiki);
 	}
 
 	public static String getVoiceName(Context ctx, String basename) {
@@ -208,7 +208,7 @@ public class FileNameTranslationHelper {
 			return ctx.getString(R.string.index_item_world_basemap);
 		} else if (basename.equals("world_bitcoin_payments")) {
 			return ctx.getString(R.string.index_item_world_bitcoin_payments);
-		} else if (basename.equals("world_seamarks")) {
+		} else if (basename.equals("world_seamarks_basemap")) {
 			return ctx.getString(R.string.index_item_world_seamarks);
 		}
 		return null;

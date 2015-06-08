@@ -11,34 +11,37 @@ import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
 import net.osmand.plus.R;
 import net.osmand.plus.Version;
-import net.osmand.plus.activities.FavouritesActivity;
 import net.osmand.plus.activities.LocalIndexInfo;
+import net.osmand.plus.activities.OsmandBaseExpandableListAdapter;
+import net.osmand.plus.activities.OsmandExpandableListFragment;
+import net.osmand.plus.activities.TabActivity;
 import net.osmand.plus.base.BasicProgressAsyncTask;
 import net.osmand.plus.srtmplugin.SRTMPlugin;
+import net.osmand.plus.views.controls.PagerSlidingTabStrip;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.ListFragment;
 import android.support.v4.view.ViewPager;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
+import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.ExpandableListAdapter;
 import android.widget.ImageView;
+import android.widget.ListAdapter;
 import android.widget.ProgressBar;
-import android.widget.TabHost;
 import android.widget.TextView;
 
 
 /**
- * Created by Denis on 08.09.2014.
+ * Created by Denis
+ * on 08.09.2014.
  */
 public class DownloadActivity extends BaseDownloadActivity {
-
-	private TabHost tabHost;
-	private FavouritesActivity.TabsAdapter mTabsAdapter;
 
 	private View progressView;
 	private ProgressBar indeterminateProgressBar;
@@ -50,7 +53,8 @@ public class DownloadActivity extends BaseDownloadActivity {
 
 	private String initialFilter = "";
 	private boolean singleTab;
-	
+
+	List<TabActivity.TabItem> mTabs = new ArrayList<TabActivity.TabItem>();
 
 	public static final String FILTER_KEY = "filter";
 	public static final String FILTER_CAT = "filter_cat";
@@ -62,16 +66,13 @@ public class DownloadActivity extends BaseDownloadActivity {
 	public static final String SINGLE_TAB = "SINGLE_TAB";
 	private List<DownloadActivityType> downloadTypes = new ArrayList<DownloadActivityType>();
 
-
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		getMyApplication().applyTheme(this);
-		supportRequestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 		super.onCreate(savedInstanceState);
 		updateDownloads();
-		setSupportProgressBarIndeterminateVisibility(false);
 
-		setContentView(R.layout.tab_content);
+		setContentView(R.layout.download);
 		singleTab = getIntent() != null && getIntent().getBooleanExtra(SINGLE_TAB, false);
 		int currentTab = 0;
 		String tab = getIntent() == null || getIntent().getExtras() == null ? null : getIntent().getExtras().getString(TAB_TO_OPEN);
@@ -95,30 +96,31 @@ public class DownloadActivity extends BaseDownloadActivity {
 				getSupportFragmentManager().beginTransaction().add(R.id.layout, f, tag).commit();
 			}
 		} else {
-			tabHost = (TabHost) findViewById(android.R.id.tabhost);
-			tabHost.setup();
 			ViewPager viewPager = (ViewPager) findViewById(R.id.pager);
-			mTabsAdapter = new FavouritesActivity.TabsAdapter(this, tabHost, viewPager, settings, false);
-			mTabsAdapter.addTab(tabHost.newTabSpec("LOCAL_INDEX").setIndicator(getString(R.string.download_tab_local)),
-					LocalIndexesFragment.class, null);
-			mTabsAdapter.addTab(tabHost.newTabSpec("DOWNLOADS")
-					.setIndicator(getString(R.string.download_tab_downloads)), DownloadIndexFragment.class, null);
-			mTabsAdapter.addTab(tabHost.newTabSpec("UPDATES").setIndicator(getString(R.string.download_tab_updates)),
-					UpdatesIndexFragment.class, null);
+			PagerSlidingTabStrip mSlidingTabLayout = (PagerSlidingTabStrip) findViewById(R.id.sliding_tabs);
 
-			tabHost.setCurrentTab(currentTab);
+			mTabs.add(new TabActivity.TabItem(R.string.download_tab_local, 
+					getString(R.string.download_tab_local), LocalIndexesFragment.class));
+			mTabs.add(new TabActivity.TabItem(R.string.download_tab_downloads, 
+					getString(R.string.download_tab_downloads), DownloadIndexFragment.class));
+			mTabs.add(new TabActivity.TabItem(R.string.download_tab_updates, 
+					getString(R.string.download_tab_updates), UpdatesIndexFragment.class));
+
+			viewPager.setAdapter(new TabActivity.OsmandFragmentPagerAdapter(getSupportFragmentManager(), mTabs));
+			mSlidingTabLayout.setViewPager(viewPager);
+
+			viewPager.setCurrentItem(currentTab);
 		}
 
 		settings = ((OsmandApplication)getApplication()).getSettings();
 
 		indeterminateProgressBar = (ProgressBar) findViewById(R.id.IndeterminateProgressBar);
-		determinateProgressBar = (ProgressBar) findViewById(R.id.DeterminateProgressBar);
+		determinateProgressBar = (ProgressBar) findViewById(R.id.memory_progress);
 		progressView = findViewById(R.id.ProgressView);
 		progressMessage = (TextView) findViewById(R.id.ProgressMessage);
 		progressPercent = (TextView) findViewById(R.id.ProgressPercent);
 		cancel = (ImageView) findViewById(R.id.Cancel);
-		int d = settings.isLightContent() ? R.drawable.a_1_navigation_cancel_small_light : R.drawable.a_1_navigation_cancel_small_dark;
-		cancel.setImageDrawable(getResources().getDrawable(d));
+		cancel.setImageDrawable(getMyApplication().getIconsCache() .getContentIcon(R.drawable.ic_action_remove_dark));
 		cancel.setOnClickListener(new View.OnClickListener() {
 
 			@Override
@@ -154,10 +156,8 @@ public class DownloadActivity extends BaseDownloadActivity {
 			}
 		}
 		changeType(downloadTypes.get(0));
-
-		getSupportActionBar().setHomeButtonEnabled(true);
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 	}
+
 
 
 
@@ -238,7 +238,7 @@ public class DownloadActivity extends BaseDownloadActivity {
 					determinateProgressBar.setProgress(basicProgressAsyncTask.getProgressPercentage());
 				}
 			}
-			updateDownloadButton(false);
+			updateDownloadButton();
 
 		}
 	}
@@ -300,7 +300,7 @@ public class DownloadActivity extends BaseDownloadActivity {
 	}
 
 	@Override
-	public void updateDownloadButton(boolean scroll) {
+	public void updateDownloadButton() {
 //		View view = getView();
 //		if (view == null || getExpandableListView() == null){
 //			return;
@@ -316,13 +316,12 @@ public class DownloadActivity extends BaseDownloadActivity {
 			String text;
 			int downloads = DownloadActivity.downloadListIndexThread.getDownloads();
 			if (!running) {
-				text = getString(R.string.download_files) + "  (" + downloads + ")"; //$NON-NLS-1$
+				text = getString(R.string.shared_string_download) + "  (" + downloads + ")"; //$NON-NLS-1$
 			} else {
-				text = getString(R.string.downloading_file_new) + "  (" + downloads + ")"; //$NON-NLS-1$
+				text = getString(R.string.shared_string_downloading) + "  (" + downloads + ")"; //$NON-NLS-1$
 			}
 			findViewById(R.id.DownloadButton).setVisibility(View.VISIBLE);
 			if (Version.isFreeVersion(getMyApplication())) {
-				int countedDownloads = DownloadActivity.downloadListIndexThread.getDownloads();
 				int left = DownloadActivity.MAXIMUM_AVAILABLE_FREE_DOWNLOADS - settings.NUMBER_OF_FREE_DOWNLOADS.get() - downloads;
 				boolean excessLimit = left < 0;
 				if (left < 0)
@@ -332,6 +331,24 @@ public class DownloadActivity extends BaseDownloadActivity {
 				}
 			}
 			((Button) findViewById(R.id.DownloadButton)).setText(text);
+		}
+		
+		for(WeakReference<Fragment> ref : fragList) {
+			Fragment f = ref.get();
+			if (!f.isDetached()) {
+				if (f instanceof OsmandExpandableListFragment) {
+					ExpandableListAdapter ad = ((OsmandExpandableListFragment) f).getExpandableListView()
+							.getExpandableListAdapter();
+					if (ad instanceof OsmandBaseExpandableListAdapter) {
+						((OsmandBaseExpandableListAdapter) ad).notifyDataSetChanged();
+					}
+				} else if(f instanceof ListFragment) {
+					ListAdapter la = ((ListFragment) f).getListAdapter();
+					if(la instanceof BaseAdapter) {
+						((BaseAdapter) la).notifyDataSetChanged();
+					}
+				}
+			}
 		}
 //		if (scroll) {
 //			getExpandableListView().scrollTo(x, y);
@@ -389,13 +406,13 @@ public class DownloadActivity extends BaseDownloadActivity {
 		if(count > 0){
 			AlertDialog.Builder builder = new AlertDialog.Builder(this);
 			builder.setMessage(getString(R.string.download_additional_maps, s, sz));
-			builder.setPositiveButton(R.string.default_buttons_yes, new DialogInterface.OnClickListener() {
+			builder.setPositiveButton(R.string.shared_string_yes, new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					downloadFilesCheckInternet();
 				}
 			});
-			builder.setNegativeButton(R.string.default_buttons_no, new DialogInterface.OnClickListener() {
+			builder.setNegativeButton(R.string.shared_string_no, new DialogInterface.OnClickListener() {
 
 				@Override
 				public void onClick(DialogInterface dialog, int which) {

@@ -12,11 +12,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import android.widget.*;
 import net.osmand.AndroidUtils;
 import net.osmand.access.AccessibleToast;
+import net.osmand.osm.io.NetworkUtils;
 import net.osmand.plus.R;
-import net.osmand.util.Algorithms;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -28,10 +27,14 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Filterable;
+import android.widget.TextView;
+import android.widget.Toast;
 
 public class ContributionVersionActivity extends OsmandListActivity {
 
@@ -55,7 +58,7 @@ public class ContributionVersionActivity extends OsmandListActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		pathToDownload = getMyApplication().getAppPath("osmandToInstall.apk");
-		setContentView(android.R.layout.list_content);
+		setContentView(R.layout.default_list_view);
 		getSupportActionBar().setSubtitle(R.string.select_build_to_install);
 		
 		String installDate = getMyApplication().getSettings().CONTRIBUTION_INSTALL_APP_DATE.get();
@@ -129,14 +132,14 @@ public class ContributionVersionActivity extends OsmandListActivity {
 			AccessibleToast.makeText(
 					this,
 					MessageFormat.format(getString(R.string.build_installed), currentSelectedBuild.tag, 
-							AndroidUtils.formatDate(getMyApplication(), currentSelectedBuild.date.getTime())), Toast.LENGTH_LONG).show();
+							AndroidUtils.formatDateTime(getMyApplication(), currentSelectedBuild.date.getTime())), Toast.LENGTH_LONG).show();
 		}
 		getMyApplication().getSettings().CONTRIBUTION_INSTALL_APP_DATE.set(dateFormat.format(d));
 	}
 	
 	protected void executeThreadOperation(int operationId) throws Exception {
 		if(operationId == DOWNLOAD_BUILDS_LIST){
-			URLConnection connection = new URL(URL_TO_RETRIEVE_BUILDS).openConnection();
+			URLConnection connection = NetworkUtils.getHttpURLConnection(URL_TO_RETRIEVE_BUILDS);
 			XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();
 			parser.setInput(connection.getInputStream(), "UTF-8");
 			int next;
@@ -146,13 +149,14 @@ public class ContributionVersionActivity extends OsmandListActivity {
 
 						String path = parser.getAttributeValue(null, "path"); //$NON-NLS-1$
 						String size = parser.getAttributeValue(null, "size"); //$NON-NLS-1$
-						String date = parser.getAttributeValue(null, "date"); //$NON-NLS-1$
+						String date = parser.getAttributeValue(null, "timestamp"); //$NON-NLS-1$
 						String tag = parser.getAttributeValue(null, "tag"); //$NON-NLS-1$
 						Date d = null;
 						if (date != null) {
 							try {
-								d = dateFormat.parse(date);
-							} catch (ParseException e) {
+								d = new Date(Long.parseLong(date));
+							} catch (RuntimeException e) {
+								e.printStackTrace();
 							}
 						}
 						OsmAndBuild build = new OsmAndBuild(path, size, d, tag);
@@ -161,7 +165,7 @@ public class ContributionVersionActivity extends OsmandListActivity {
 				}
 			}
 		} else if(operationId == INSTALL_BUILD){
-			URLConnection connection = new URL(URL_GET_BUILD + currentSelectedBuild.path).openConnection();
+			URLConnection connection = NetworkUtils.getHttpURLConnection(URL_GET_BUILD + currentSelectedBuild.path);
 			if(pathToDownload.exists()){
 				pathToDownload.delete();
 			}
@@ -208,8 +212,8 @@ public class ContributionVersionActivity extends OsmandListActivity {
 		final OsmAndBuild item = (OsmAndBuild) getListAdapter().getItem(position);
 		Builder builder = new AlertDialog.Builder(this);
 		builder.setMessage(MessageFormat.format(getString(R.string.install_selected_build), item.tag,
-				AndroidUtils.formatDate(getMyApplication(), item.date.getTime()), item.size));
-		builder.setPositiveButton(R.string.default_buttons_yes, new DialogInterface.OnClickListener() {
+				AndroidUtils.formatDateTime(getMyApplication(), item.date.getTime()), item.size));
+		builder.setPositiveButton(R.string.shared_string_yes, new DialogInterface.OnClickListener() {
 
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
@@ -219,7 +223,7 @@ public class ContributionVersionActivity extends OsmandListActivity {
 			}
 		});
 
-		builder.setNegativeButton(R.string.default_buttons_no, null);
+		builder.setNegativeButton(R.string.shared_string_no, null);
 		builder.show();
 	}
 
@@ -245,7 +249,7 @@ public class ContributionVersionActivity extends OsmandListActivity {
 			
 			TextView description = (TextView) row.findViewById(R.id.download_descr);
 			StringBuilder format = new StringBuilder();
-			format.append(AndroidUtils.formatDate(getMyApplication(), build.date.getTime()))/*.append(" : ").append(build.size).append(" MB")*/;
+			format.append(AndroidUtils.formatDateTime(getMyApplication(), build.date.getTime()))/*.append(" : ").append(build.size).append(" MB")*/;
 			description.setText(format.toString());
 
 			int color = getResources().getColor(R.color.color_unknown);

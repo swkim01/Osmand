@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-import android.support.v7.app.ActionBar;
 import net.osmand.IProgress;
 import net.osmand.IndexConstants;
 import net.osmand.Location;
@@ -33,7 +32,6 @@ import net.osmand.plus.TargetPointsHelper;
 import net.osmand.plus.Version;
 import net.osmand.plus.activities.MapActivity;
 import net.osmand.plus.activities.MapActivityLayers;
-import net.osmand.plus.activities.SelectedGPXFragment;
 import net.osmand.plus.activities.actions.ShareLocation;
 import net.osmand.plus.api.FileSettingsAPIImpl;
 import net.osmand.plus.api.SettingsAPI;
@@ -41,6 +39,7 @@ import net.osmand.plus.download.DownloadActivity;
 import net.osmand.plus.download.DownloadActivityType;
 import net.osmand.plus.download.DownloadIndexFragment;
 import net.osmand.plus.helpers.WaypointHelper;
+import net.osmand.plus.myplaces.SelectedGPXFragment;
 import net.osmand.plus.routing.RouteCalculationResult;
 import net.osmand.plus.sherpafy.TourInformation.StageFavorite;
 import net.osmand.plus.sherpafy.TourInformation.StageInformation;
@@ -54,10 +53,10 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
+import android.support.v7.app.ActionBar;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
@@ -94,16 +93,11 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 			osmandSettings.OSMAND_THEME.set(OsmandSettings.OSMAND_LIGHT_THEME);
 		}
 		accessCodePref = osmandSettings.registerStringPreference(ACCESS_CODE, "").makeGlobal();
-		toursFolder = new File(osmandSettings.getExternalStorageDirectory(), "osmand/tours");
+		toursFolder = app.getAppPath("tours");
 
 	}
 
-	@Override
-	public File getExternalStorageDir() {
-		final String defaultLocation = Environment.getExternalStorageDirectory().getAbsolutePath();
-		return new File(originalApi.getString(originalGlobal, OsmandSettings.EXTERNAL_STORAGE_DIR,
-				defaultLocation));
-	}
+
 
 	public boolean setAccessCode(String acCode) {
 		acCode = acCode.toUpperCase();
@@ -354,7 +348,7 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 				bld.setMessage(R.string.stage_is_completed);
 			}
 			bld.setTitle(getString(R.string.stage_is_completed_short))
-					.setPositiveButton(R.string.default_buttons_ok, null);
+					.setPositiveButton(R.string.shared_string_ok, null);
 			if (args != null && args.getBoolean(START_OVER)) {
 				String id = args.getString(TOUR_PARAM);
 				TourInformation tours = null;
@@ -475,19 +469,19 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 
 	@Override
 	public void prepareLayerContextMenu(MapActivity activity, ContextMenuAdapter adapter) {
-		filter(adapter, R.string.layer_poi, R.string.layer_amenity_label/*, R.string.layer_favorites*/);
+		filter(adapter, R.string.layer_poi, R.string.layer_amenity_label/*, R.string.shared_string_favorites*/);
 	}
 	
 	@Override
 	public void prepareLocationMenu(final MapActivity mapActivity, ContextMenuAdapter adapter) {
 		filter(adapter, R.string.context_menu_item_directions_to,
 				R.string.context_menu_item_destination_point, R.string.context_menu_item_search,
-				R.string.context_menu_item_share_location/*, R.string.context_menu_item_add_favorite*/);
+				R.string.context_menu_item_share_location/*, R.string.shared_string_add_to_favorites*/);
 		MapActivityLayers layers = mapActivity.getMapLayers();
 		if(layers.getContextMenuLayer().getFirstSelectedObject() instanceof StageFavorite) {
 			final StageFavorite sf = ((StageFavorite)layers.getContextMenuLayer().getFirstSelectedObject());
 			if(selectedStage != null) {
-				adapter.item(R.string.show_waypoint_information).icons(R.drawable.ic_action_info_dark, R.drawable.ic_action_info_light ).position(0)
+				adapter.item(R.string.show_waypoint_information).iconColor(R.drawable.ic_action_gabout_dark).position(0)
 				.listen(new OnContextMenuClick() {
 					@Override
 					public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
@@ -522,7 +516,7 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 			ssf.onAttach(getActivity());
             AlertDialog dlg = new AlertDialog.Builder(getActivity())
             		.setView(ssf.onCreateView(getActivity().getLayoutInflater(), null, savedInstanceState))
-                    .setPositiveButton(R.string.default_buttons_ok, null)
+                    .setPositiveButton(R.string.shared_string_ok, null)
                     .create();
             return dlg;
         }
@@ -537,31 +531,29 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 				R.string.menu_mute_on, R.string.menu_mute_off,
 				R.string.where_am_i, R.string.context_menu_item_share_location);
 		//poi
-		if (osmandSettings.SHOW_POI_OVER_MAP.get()) {
-			adapter.item(R.string.sherpafy_disable_poi).icons(
-					R.drawable.ic_action_gremove_dark, R.drawable.ic_action_gremove_light)
+		if (osmandSettings.SELECTED_POI_FILTER_FOR_MAP.get()!= null) {
+			adapter.item(R.string.sherpafy_disable_poi).iconColor(
+					R.drawable.ic_action_gremove_dark)
 					.listen(new OnContextMenuClick() {
 				@Override
 				public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
-					app.getSettings().SHOW_POI_OVER_MAP.set(false);
-					mapActivity.getMapLayers().updateLayers(mapActivity.getMapView());
+					app.getSettings().SELECTED_POI_FILTER_FOR_MAP.set(null);
+					mapActivity.refreshMap();
 					return true;
 				}
 			}).reg();
 		} else {
-			adapter.item(R.string.poi).icons(R.drawable.ic_action_layers_dark, R.drawable.ic_action_layers_light)
+			adapter.item(R.string.poi).iconColor(R.drawable.ic_action_layers_dark)
 					.listen(new OnContextMenuClick() {
 						@Override
 						public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
 							mapActivity.getMapLayers().selectPOIFilterLayer(mapActivity.getMapView(), null);
-							app.getSettings().SHOW_POI_OVER_MAP.set(true);
-							mapActivity.getMapLayers().updateLayers(mapActivity.getMapView());
 							return true;
 						}
 					}).reg();
 		}
 		//important info
-		adapter.item(R.string.sherpafy_tour_info_txt).icons(R.drawable.ic_action_info_dark, R.drawable.ic_action_info_light)
+		adapter.item(R.string.sherpafy_tour_info_txt).iconColor(R.drawable.ic_action_gabout_dark)
 				.listen(new OnContextMenuClick() {
 					@Override
 					public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
@@ -575,7 +567,7 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 		final StageInformation stage = getSelectedStage();
 		if (stage != null && !isStageVisited(stage.order)) {
 			adapter.item(R.string.complete_stage)
-					.icons(R.drawable.ic_action_finish_flag_dark, R.drawable.ic_action_finish_flag_light)
+					.iconColor(R.drawable.ic_action_flag_dark)
 					.listen(new OnContextMenuClick() {
 				@Override
 				public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
@@ -586,8 +578,8 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 			}).reg();
 		}
 		//share my location
-		adapter.item(R.string.context_menu_item_share_location).icons(
-				R.drawable.ic_action_gshare_dark, R.drawable.ic_action_gshare_light).listen(new OnContextMenuClick() {
+		adapter.item(R.string.context_menu_item_share_location).iconColor(
+				R.drawable.ic_action_gshare_dark).listen(new OnContextMenuClick() {
 			@Override
 			public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
 				if (app.getLocationProvider().getLastKnownLocation() != null) {
@@ -711,7 +703,7 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 			WptPt lp = gpx.getLastPoint();
 			if (lp != null) {
 				TargetPointsHelper targetPointsHelper = app.getTargetPointsHelper();
-				targetPointsHelper.navigateToPoint(new LatLon(lp.lat, lp.lon), true, -1, lp.name);
+				targetPointsHelper.navigateToPoint(new LatLon(lp.lat, lp.lon), true, -1, lp.getPointDescription(a));
 				app.getSettings().navigateDialog(true);
 			}
 		}
@@ -739,9 +731,5 @@ public class SherpafyCustomization extends OsmAndAppCustomization {
 		a.startActivityForResult(newIntent, 0);
 	}
 	
-	@Override
-	public boolean showNavigationControls() {
-		return false;
-	}
 
 }

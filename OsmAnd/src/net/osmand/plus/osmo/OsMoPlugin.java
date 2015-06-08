@@ -24,16 +24,11 @@ import net.osmand.plus.OsmandPlugin;
 import net.osmand.plus.R;
 import net.osmand.plus.TargetPointsHelper;
 import net.osmand.plus.activities.MapActivity;
-import net.osmand.plus.activities.SettingsActivity;
 import net.osmand.plus.download.DownloadFileHelper;
 import net.osmand.plus.osmo.OsMoGroupsStorage.OsMoDevice;
 import net.osmand.plus.osmo.OsMoService.SessionInfo;
 import net.osmand.plus.views.MapInfoLayer;
-import net.osmand.plus.views.MonitoringInfoControl;
-import net.osmand.plus.views.MonitoringInfoControl.MonitoringInfoControlServices;
 import net.osmand.plus.views.OsmandMapLayer.DrawSettings;
-import net.osmand.plus.views.OsmandMapTileView;
-import net.osmand.plus.views.mapwidgets.BaseMapWidget;
 import net.osmand.plus.views.mapwidgets.TextInfoWidget;
 import net.osmand.util.Algorithms;
 
@@ -41,24 +36,21 @@ import org.apache.commons.logging.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
-import android.preference.Preference;
-import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceScreen;
 import android.view.View;
 import android.widget.ArrayAdapter;
 
-public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlServices, OsMoReactor {
+public class OsMoPlugin extends OsmandPlugin implements OsMoReactor {
 
 	private OsmandApplication app;
 	public static final String ID = "osmand.osmo";
 	private OsMoService service;
 	private OsMoTracker tracker;
 	private OsMoGroups groups;
-	private BaseMapWidget osmoControl;
+	private TextInfoWidget osmoControl;
 	private OsMoPositionLayer olayer;
 	protected MapActivity mapActivity;
 	protected OsMoGroupsActivity groupsActivity;
@@ -69,16 +61,23 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 
 	public OsMoPlugin(final OsmandApplication app) {
 		this.app = app;
-		service = new OsMoService(app, this);
-		tracker = new OsMoTracker(service, app.getSettings().OSMO_SAVE_TRACK_INTERVAL,
-				app.getSettings().OSMO_SEND_LOCATIONS_STATE);
-		deviceControl = new OsMoControlDevice(app, this, service, tracker);
-		groups = new OsMoGroups(this, service, tracker, app);
-		ApplicationMode.regWidget("osmo_control", (ApplicationMode[])null);
+	}
+	
+	@Override
+	public int getAssetResourceName() {
+		return R.drawable.osmo_monitoring;
 	}
 
 	@Override
-	public boolean init(final OsmandApplication app) {
+	public boolean init(final OsmandApplication app, Activity activity) {
+		if (service == null) {
+			service = new OsMoService(app, this);
+			tracker = new OsMoTracker(service, app.getSettings().OSMO_SAVE_TRACK_INTERVAL,
+					app.getSettings().OSMO_SEND_LOCATIONS_STATE);
+			deviceControl = new OsMoControlDevice(app, this, service, tracker);
+			groups = new OsMoGroups(this, service, tracker, app);
+		}
+		ApplicationMode.regWidget("osmo_control", (ApplicationMode[])null);
 		if(app.getSettings().OSMO_AUTO_CONNECT.get() || 
 				(System.currentTimeMillis() - app.getSettings().OSMO_LAST_PING.get() < 5 * 60 * 1000 )) {
 			service.connect(true);
@@ -98,6 +97,7 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 	@Override
 	public void disable(OsmandApplication app) {
 		super.disable(app);
+		tracker.disableTracker();
 		service.disconnect();
 	}
 
@@ -116,26 +116,17 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 		return app.getString(R.string.osmo_plugin_name);
 	}
 	
-	
-
 	@Override
-	public void updateLayers(OsmandMapTileView mapView, MapActivity activity) {
-		// registerLayers(activity);
-		super.updateLayers(mapView, activity);
-		MonitoringInfoControl lock = activity.getMapLayers().getMapInfoLayer().getMonitoringInfoControl();
-		if (lock != null && !lock.getMonitorActions().contains(this)) {
-			lock.addMonitorActions(this);
-		}
-		
-		
+	public int getLogoResourceId() {
+		return R.drawable.ic_osmo_dark;
 	}
+
 	
 	@Override
 	public void registerMapContextMenuActions(final MapActivity mapActivity, final double latitude, final double longitude,
 			ContextMenuAdapter adapter, final Object selectedObj) {
 		if(selectedObj instanceof OsMoDevice) {
-			adapter.item(R.string.osmo_center_location).icons(R.drawable.ic_action_gloc_dark, 
-					R.drawable.ic_action_gloc_light).listen(new OnContextMenuClick() {
+			adapter.item(R.string.osmo_center_location).iconColor(R.drawable.ic_action_gloc_dark).listen(new OnContextMenuClick() {
 						
 						@Override
 						public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
@@ -149,8 +140,7 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 						}
 					}).position(0).reg();
 			if(OsMoPositionLayer.getFollowDestinationId() != null) {
-				adapter.item(R.string.osmo_cancel_moving_target).icons(R.drawable.ic_action_close_dark, 
-						R.drawable.ic_action_close_light).listen(new OnContextMenuClick() {
+				adapter.item(R.string.osmo_cancel_moving_target).iconColor(R.drawable.ic_action_remove_dark).listen(new OnContextMenuClick() {
 
 							@Override
 							public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
@@ -160,8 +150,7 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 							
 						}).position(0).reg();
 			}
-			adapter.item(R.string.osmo_set_moving_target).icons(R.drawable.ic_action_flag_dark, 
-					R.drawable.ic_action_flag_light).listen(new OnContextMenuClick() {
+			adapter.item(R.string.osmo_set_moving_target).iconColor(R.drawable.ic_action_flag_dark).listen(new OnContextMenuClick() {
 						
 						@Override
 						public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
@@ -182,9 +171,9 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 	public void registerLayers(MapActivity activity) {
 		super.registerLayers(activity);
 		MapInfoLayer layer = activity.getMapLayers().getMapInfoLayer();
-		osmoControl = createOsMoControl(activity, layer.getPaintText(), layer.getPaintSubText());
-		layer.getMapInfoControls().registerSideWidget(osmoControl,
-				R.drawable.mon_osmo_signal_inactive, R.drawable.mon_osmo_signal_inactive, R.string.osmo_control, "osmo_control", false, 18);
+		osmoControl = createOsMoControl(activity);
+		layer.registerSideWidget(osmoControl,
+				R.drawable.ic_osmo_dark, R.string.osmo_control, "osmo_control", false, 18);
 		layer.recreateControls();
 		
 		if(olayer != null) {
@@ -196,14 +185,14 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 	
 	@Override
 	public void mapActivityPause(MapActivity activity) {
-		groups.setUiListener(null);
+		groups.addUiListeners(olayer);
 		mapActivity = activity;
 	}
 	
 	@Override
 	public void mapActivityResume(MapActivity activity) {
 		if (olayer != null) {
-			groups.setUiListener(olayer);
+			groups.addUiListeners(olayer);
 		}
 		mapActivity = null;
 	}
@@ -211,20 +200,12 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 	/**
 	 * creates (if it wasn't created previously) the control to be added on a MapInfoLayer that shows a monitoring state (recorded/stopped)
 	 */
-	private BaseMapWidget createOsMoControl(final MapActivity map, Paint paintText, Paint paintSubText) {
-		
-		final Drawable srcSmall = map.getResources().getDrawable(R.drawable.mon_osmo_conn_small);
-		final Drawable srcSignalSmall = map.getResources().getDrawable(R.drawable.mon_osmo_conn_signal_small);
-		final Drawable srcBig = map.getResources().getDrawable(R.drawable.mon_osmo_conn_big);
-		final Drawable srcSignalBig = map.getResources().getDrawable(R.drawable.mon_osmo_conn_signal_big);
-//		final Drawable srcinactive = map.getResources().getDrawable(R.drawable.mon_osmo_inactive);
-		final Drawable srcSignalinactive = map.getResources().getDrawable(R.drawable.mon_osmo_signal_inactive);
-		final TextInfoWidget osmoControl = new TextInfoWidget(map, 0, paintText, paintSubText) {
+	private TextInfoWidget createOsMoControl(final MapActivity map) {
+		final TextInfoWidget osmoControl = new TextInfoWidget(map) {
 			long lastUpdateTime;
-			private Drawable blinkImg;
+			private int  blinkImg;
 			@Override
 			public boolean updateInfo(DrawSettings drawSettings) {
-				boolean visible = true;
 				String txt = "OsMo";
 				String subtxt = "";
 				SessionInfo si = getService().getCurrentSessionInfo();
@@ -251,12 +232,19 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 						}
 					}
 				}
-				Drawable small = srcSignalinactive; //tracker.isEnabledTracker() ? srcSignalinactive : srcinactive;
-				Drawable big = srcSignalinactive; // tracker.isEnabledTracker() ? srcSignalinactive : srcinactive;
+				boolean night  = drawSettings != null && drawSettings.isNightMode();
+				int srcSignalinactive =  !night ? R.drawable.widget_osmo_inactive_day : R.drawable.widget_osmo_inactive_night;
+				int small = srcSignalinactive; //tracker.isEnabledTracker() ? srcSignalinactive : srcinactive;
+				int big = srcSignalinactive; // tracker.isEnabledTracker() ? srcSignalinactive : srcinactive;
 				long last = service.getLastCommandTime();
 				if (service.isActive()) {
-					small = tracker.isEnabledTracker() ? srcSignalSmall : srcSmall;
-					big = tracker.isEnabledTracker() ? srcSignalBig : srcBig;
+					if(tracker.isEnabledTracker() ) {
+						small = night ? R.drawable.widget_osmo_connected_location_night : R.drawable.widget_osmo_connected_location_day;
+						big = night ? R.drawable.widget_osmo_connected_location_night : R.drawable.widget_osmo_connected_location_day;
+					} else {
+						small = night ? R.drawable.widget_osmo_connected_night : R.drawable.widget_osmo_connected_day;
+						big = night ? R.drawable.widget_osmo_connected_night : R.drawable.widget_osmo_connected_day;
+					}
 				}
 				setText(txt, subtxt);
 				if(blinkImg != small) {
@@ -267,21 +255,17 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 					blink(big, small);
 				}
 				
-				updateVisibility(visible);
 				return true;
 			}
 			
-			private void blink(Drawable bigger, final Drawable smaller ) {
+			private void blink(int bigger, final int smaller ) {
 				blinkImg = smaller;
 				setImageDrawable(bigger);
-				invalidate();
-				postDelayed(new Runnable() {
+				map.getMyApplication().runInUIThread(new Runnable() {
 					@Override
 					public void run() {
-						blinkImg = null;
+						blinkImg = 0;
 						setImageDrawable(smaller);
-						requestLayout();
-						invalidate();
 					}
 				}, 500);
 			}
@@ -299,40 +283,13 @@ public class OsMoPlugin extends OsmandPlugin implements MonitoringInfoControlSer
 	}
 
 	@Override
-	public void addMonitorActions(ContextMenuAdapter qa, MonitoringInfoControl li, final OsmandMapTileView view) {
-		qa.item("Test (send)").icons(R.drawable.ic_action_grefresh_dark, R.drawable.ic_action_grefresh_light)
-				.listen(new OnContextMenuClick() {
-
-					@Override
-					public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {
-						final double lat = view.getLatitude();
-						final double lon = view.getLongitude();
-						tracker.sendCoordinate(lat, lon);
-						return true;
-					}
-				}).reg();
-	}
-
-	@Override
-	public void settingsActivityCreate(final SettingsActivity activity, PreferenceScreen screen) {
-		Preference grp = new Preference(activity);
-		grp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				activity.startActivity(new Intent(activity, SettingsOsMoActivity.class));
-				return true;
-			}
-		});
-		grp.setSummary(R.string.osmo_settings_descr);
-		grp.setTitle(R.string.osmo_settings);
-		grp.setKey("osmo_settings");
-		screen.addPreference(grp);
+	public Class<? extends Activity> getSettingsActivity() {
+		return SettingsOsMoActivity.class;
 	}
 	
 	@Override
 	public void registerOptionsMenuItems(final MapActivity mapActivity, ContextMenuAdapter helper) {
-		helper.item(R.string.osmo_groups).icons(R.drawable.ic_osmo_dark, R.drawable.ic_osmo_light).position(6)
+		helper.item(R.string.osmo_groups).iconColor(R.drawable.ic_osmo_dark).position(6)
 				.listen(new OnContextMenuClick() {
 					@Override
 					public boolean onContextMenuClick(ArrayAdapter<?> adapter, int itemId, int pos, boolean isChecked) {

@@ -1,22 +1,5 @@
 package net.osmand.plus.audionotes;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import net.osmand.access.AccessibleAlertBuilder;
-import net.osmand.access.AccessibleToast;
-import net.osmand.data.DataTileManager;
-import net.osmand.data.LatLon;
-import net.osmand.data.QuadRect;
-import net.osmand.data.RotatedTileBox;
-import net.osmand.plus.ContextMenuAdapter;
-import net.osmand.plus.ContextMenuAdapter.OnContextMenuClick;
-import net.osmand.plus.R;
-import net.osmand.plus.activities.MapActivity;
-import net.osmand.plus.audionotes.AudioVideoNotesPlugin.Recording;
-import net.osmand.plus.views.ContextMenuLayer.IContextMenuProvider;
-import net.osmand.plus.views.OsmandMapLayer;
-import net.osmand.plus.views.OsmandMapTileView;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.graphics.Bitmap;
@@ -28,6 +11,25 @@ import android.graphics.Paint.Style;
 import android.graphics.PointF;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
+
+import net.osmand.access.AccessibleAlertBuilder;
+import net.osmand.access.AccessibleToast;
+import net.osmand.data.DataTileManager;
+import net.osmand.data.LatLon;
+import net.osmand.data.PointDescription;
+import net.osmand.data.QuadRect;
+import net.osmand.data.RotatedTileBox;
+import net.osmand.plus.ContextMenuAdapter;
+import net.osmand.plus.ContextMenuAdapter.OnContextMenuClick;
+import net.osmand.plus.R;
+import net.osmand.plus.activities.MapActivity;
+import net.osmand.plus.audionotes.AudioVideoNotesPlugin.Recording;
+import net.osmand.plus.views.ContextMenuLayer.IContextMenuProvider;
+import net.osmand.plus.views.OsmandMapLayer;
+import net.osmand.plus.views.OsmandMapTileView;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class AudioNotesLayer extends OsmandMapLayer implements IContextMenuProvider {
 
@@ -132,28 +134,28 @@ public class AudioNotesLayer extends OsmandMapLayer implements IContextMenuProvi
 
 			};
 			if(r.isPhoto()) {
-				adapter.item(R.string.recording_context_menu_show).icons(
-						R.drawable.ic_action_eye_dark, R.drawable.ic_action_eye_light).listen(listener).reg();
+				adapter.item(R.string.recording_context_menu_show).iconColor(
+						R.drawable.ic_action_view).listen(listener).reg();
 			} else {
-				adapter.item(R.string.recording_context_menu_play).icons(
-						R.drawable.ic_action_play_dark, R.drawable.ic_action_play_light).listen(listener).reg();
+				adapter.item(R.string.recording_context_menu_play).iconColor(
+						R.drawable.ic_action_play_dark).listen(listener).reg();
 			}
-			adapter.item(R.string.recording_context_menu_delete).icons(R.drawable.ic_action_delete_dark,
-					R.drawable.ic_action_delete_light).listen(listener).reg();
+			adapter.item(R.string.recording_context_menu_delete).iconColor(R.drawable.ic_action_delete_dark
+					).listen(listener).reg();
 		}
 	}
 	
 	private void deleteRecording(final Recording r) {
 		AccessibleAlertBuilder bld = new AccessibleAlertBuilder(activity);
 		bld.setMessage(R.string.recording_delete_confirm);
-		bld.setPositiveButton(R.string.default_buttons_yes, new OnClickListener() {
+		bld.setPositiveButton(R.string.shared_string_yes, new OnClickListener() {
 			
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
 				plugin.deleteRecording(r);				
 			}
 		});
-		bld.setNegativeButton(R.string.default_buttons_no, null);
+		bld.setNegativeButton(R.string.shared_string_no, null);
 		bld.show();
 		
 	}
@@ -167,12 +169,13 @@ public class AudioNotesLayer extends OsmandMapLayer implements IContextMenuProvi
 	}
 	
 	@Override
-	public String getObjectName(Object o) {
+	public PointDescription getObjectName(Object o) {
 		if(o instanceof Recording){
-			if(((Recording)o).name == null) {
-				return view.getResources().getString(R.string.recording_default_name);
+			Recording rec = (Recording) o;
+			if(rec.getName(activity).isEmpty()) {
+				return new PointDescription(rec.getSearchHistoryType(), view.getResources().getString(R.string.recording_default_name));
 			}
-			return ((Recording)o).name; //$NON-NLS-1$
+			return new PointDescription(rec.getSearchHistoryType(), ((Recording)o).getName(activity));
 		}
 		return null;
 	}

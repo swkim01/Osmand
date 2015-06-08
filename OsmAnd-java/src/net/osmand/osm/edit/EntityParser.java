@@ -1,20 +1,17 @@
 package net.osmand.osm.edit;
 
+import net.osmand.data.*;
+import net.osmand.data.City.CityType;
+import net.osmand.osm.MapPoiTypes;
+import net.osmand.osm.MapRenderingTypes;
+import net.osmand.osm.PoiCategory;
+import net.osmand.osm.edit.OSMSettings.OSMTagKey;
+import net.osmand.util.Algorithms;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import net.osmand.data.Amenity;
-import net.osmand.data.AmenityType;
-import net.osmand.data.Building;
-import net.osmand.data.City;
-import net.osmand.data.City.CityType;
-import net.osmand.data.LatLon;
-import net.osmand.data.MapObject;
-import net.osmand.data.TransportStop;
-import net.osmand.osm.MapRenderingTypes;
-import net.osmand.osm.edit.OSMSettings.OSMTagKey;
-import net.osmand.util.Algorithms;
 
 public class EntityParser {
 	
@@ -33,7 +30,13 @@ public class EntityParser {
 			}
 		}
 		if (mo.getLocation() == null) {
-			LatLon l = OsmMapUtils.getCenter(e);
+			LatLon l = null;
+			if (mo instanceof Building) {
+				l = findOnlyOneEntrance(e);
+			}
+			if (l == null) {
+				l = OsmMapUtils.getCenter(e);
+			}
 			if (l != null) {
 				mo.setLocation(l.getLatitude(), l.getLongitude());
 			}
@@ -44,6 +47,58 @@ public class EntityParser {
 		if (mo.getName().length() == 0) {
 			setNameFromRef(mo, e);
 		}
+	}
+
+	/**
+	 * Finds the LatLon of a main entrance point. Main entrance here is the only entrance with value 'main'. If there is
+	 * no main entrances, but there is only one entrance of any kind in given building, it is returned.
+	 *
+	 * @param e building entity
+	 * @return main entrance point location or {@code null} if no entrance found or more than one entrance
+	 */
+	private static LatLon findOnlyOneEntrance(Entity e) {
+		if (e instanceof Node) {
+			return e.getLatLon();
+		}
+		List<Node> nodes = null;
+		if (e instanceof Way) {
+			nodes = ((Way) e).getNodes();
+		} else if (e instanceof Relation) {
+			nodes = new ArrayList<Node>();
+			for (Entity member : ((Relation) e).getMembers(null)) {
+				if (member instanceof Way) {
+					nodes.addAll(((Way) member).getNodes());
+				}
+			}
+		}
+		if (nodes != null) {
+			int entrancesCount = 0;
+			Node mainEntrance = null;
+			Node lastEntrance = null;
+
+			for (Node node : nodes) {
+				String entrance = node.getTag(OSMTagKey.ENTRANCE);
+				if (entrance != null && !"no".equals(entrance)) {
+					if ("main".equals(entrance)) {
+						// main entrance should be only one
+						if (mainEntrance != null) {
+							return null;
+						}
+						mainEntrance = node;
+					}
+					entrancesCount++;
+					lastEntrance = node;
+				}
+			}
+			if (mainEntrance != null) {
+				return mainEntrance.getLatLon();
+			}
+			if (entrancesCount == 1) {
+				return lastEntrance.getLatLon();
+			}
+		}
+
+		return null;
 	}
 
 	private static void setNameFromRef(MapObject mo, Entity e) {
@@ -63,7 +118,7 @@ public class EntityParser {
 		mo.setName(op);
 	}
 	
-	public static Amenity parseAmenity(Entity entity, AmenityType type, String subtype, Map<String, String> tagValues,
+	public static Amenity parseAmenity(Entity entity, PoiCategory type, String subtype, Map<String, String> tagValues,
 			MapRenderingTypes types) {
 		Amenity am = new Amenity();
 		parseMapObject(am, entity);
@@ -72,8 +127,12 @@ public class EntityParser {
 		}
 		am.setType(type);
 		am.setSubType(subtype);
-		am.setAdditionalInfo(types.getAmenityAdditionalInfo(tagValues, type, subtype));
-		am.setAdditionalInfo("website", getWebSiteURL(entity));
+		AmenityType at = AmenityType.findOrCreateTypeNoReg(type.getKeyName());
+		am.setAdditionalInfo(types.getAmenityAdditionalInfo(tagValues, at, subtype));
+		String wbs = getWebSiteURL(entity);
+		if(wbs != null) {
+			am.setAdditionalInfo("website", wbs);
+		}
 		return am;
 	}
 
@@ -106,7 +165,7 @@ public class EntityParser {
 	}
 	
 	public static List<Amenity> parseAmenities(MapRenderingTypes renderingTypes,
-			Entity entity, List<Amenity> amenitiesList){
+			MapPoiTypes poiTypes, Entity entity, List<Amenity> amenitiesList){
 		amenitiesList.clear();
 		// it could be collection of amenities
 		boolean relation = entity instanceof Relation;
@@ -120,7 +179,8 @@ public class EntityParser {
 							: renderingTypes.getAmenityType(e.getKey(), e.getValue(), hasName );
 					if (type != null) {
 						String subtype = renderingTypes.getAmenitySubtype(e.getKey(), e.getValue());
-						Amenity a = parseAmenity(entity, type, subtype, tags, renderingTypes);
+						PoiCategory pc = poiTypes.getPoiCategoryByName(type.getCategoryName(), true);
+						Amenity a = parseAmenity(entity, pc, subtype, tags, renderingTypes);
 						if (checkAmenitiesToAdd(a, amenitiesList) && !"no".equals(subtype)) {
 							amenitiesList.add(a);
 						}

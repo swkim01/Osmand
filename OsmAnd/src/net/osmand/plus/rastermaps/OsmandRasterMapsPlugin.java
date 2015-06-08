@@ -23,7 +23,6 @@ import net.osmand.plus.Version;
 import net.osmand.plus.activities.DownloadTilesDialog;
 import net.osmand.plus.activities.MapActivity;
 import net.osmand.plus.activities.MapActivityLayers;
-import net.osmand.plus.activities.SettingsActivity;
 import net.osmand.plus.views.MapTileLayer;
 import net.osmand.plus.views.OsmandMapTileView;
 import net.osmand.util.Algorithms;
@@ -31,11 +30,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.os.AsyncTask;
-import android.preference.Preference;
-import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceScreen;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
@@ -46,7 +41,7 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 public class OsmandRasterMapsPlugin extends OsmandPlugin {
-	private static final String ID = "osmand.rastermaps";
+	public static final String ID = "osmand.rastermaps";
 	private OsmandSettings settings;
 	private OsmandApplication app;
 	
@@ -58,9 +53,19 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 	}
 	
 	@Override
-	public boolean init(OsmandApplication app) {
+	public boolean init(OsmandApplication app, Activity activity) {
 		settings = app.getSettings();
 		return true;
+	}
+	
+	@Override
+	public int getLogoResourceId() {
+		return R.drawable.ic_world_globe_dark;
+	}
+	
+	@Override
+	public int getAssetResourceName() {
+		return R.drawable.online_maps;
 	}
 	
 	@Override
@@ -116,7 +121,7 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 		if(!Algorithms.objectEquals(overlay, layer.getMap())){
 			if(overlay == null){
 				mapView.removeLayer(layer);
-			} else {
+			} else if (mapView.getMapRenderer() == null) {
 				mapView.addLayer(layer, layerOrder);
 			}
 			layer.setMap(overlay);
@@ -209,12 +214,11 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 				return true;
 			}
 		};
-		adapter.item(R.string.layer_map).icons(R.drawable.ic_action_globus_dark, R.drawable.ic_action_globus_light)
-				.listen(listener).position(3).reg();
-		adapter.item(R.string.layer_overlay).selected(overlayLayer.getMap() != null ? 1 : 0).
-				icons(R.drawable.ic_layer_top_dark, R.drawable.ic_layer_top_light).listen(listener).position(14).reg();
-		adapter.item(R.string.layer_underlay).selected(underlayLayer.getMap() != null ? 1 : 0) 
-				.icons(R.drawable.ic_layer_bottom_dark, R.drawable.ic_layer_bottom_light).listen(listener).position(15).reg();
+		
+		adapter.item(R.string.layer_overlay).selected(overlayLayer != null && overlayLayer.getMap() != null ? 1 : 0).
+				iconColor(R.drawable.ic_layer_top_dark).listen(listener).position(14).reg();
+		adapter.item(R.string.layer_underlay).selected(underlayLayer != null && underlayLayer.getMap() != null ? 1 : 0) 
+				.iconColor(R.drawable.ic_layer_bottom_dark).listen(listener).position(15).reg();
 	}
 	
 	
@@ -235,30 +239,16 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 					return true;
 				}
 			};
-			adapter.item(R.string.context_menu_item_update_map).icons(R.drawable.ic_action_refresh_dark, R.drawable.ic_action_refresh_light)
+			adapter.item(R.string.context_menu_item_update_map).iconColor(R.drawable.ic_action_refresh_dark)
 					.listen(listener).reg();
-			adapter.item(R.string.context_menu_item_download_map).icons(R.drawable.ic_action_gdown_dark, R.drawable.ic_action_gdown_light)
+			adapter.item(R.string.context_menu_item_download_map).iconColor(R.drawable.ic_action_import)
 					.listen(listener).reg();
 		}
 	}
 	
-
 	@Override
-	public void settingsActivityCreate(final SettingsActivity activity, PreferenceScreen screen) {
-		Preference grp = new Preference(activity);
-		grp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				activity.startActivity(new Intent(activity, SettingsRasterMapsActivity.class));
-				return true;
-			}
-		});
-		grp.setSummary(R.string.online_map_settings_descr);
-		grp.setTitle(R.string.online_map_settings);
-		grp.setKey("map_settings");
-		screen.addPreference(grp);
-		
+	public Class<? extends Activity> getSettingsActivity() {
+		return SettingsRasterMapsActivity.class;
 	}
 
 	
@@ -285,7 +275,7 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 			}
 			protected void onPostExecute(final java.util.List<TileSourceTemplate> downloaded) {
 				if (downloaded == null || downloaded.isEmpty()) {
-					AccessibleToast.makeText(activity, R.string.error_io_error, Toast.LENGTH_SHORT).show();
+					AccessibleToast.makeText(activity, R.string.shared_string_io_error, Toast.LENGTH_SHORT).show();
 					return;
 				}
 				Builder builder = new AlertDialog.Builder(activity);
@@ -304,9 +294,9 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 						}
 					}
 				});
-				builder.setNegativeButton(R.string.default_buttons_cancel, null);
+				builder.setNegativeButton(R.string.shared_string_cancel, null);
 				builder.setTitle(R.string.select_tile_source_to_install);
-				builder.setPositiveButton(R.string.default_buttons_apply, new DialogInterface.OnClickListener() {
+				builder.setPositiveButton(R.string.shared_string_apply, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						List<TileSourceTemplate> toInstall = new ArrayList<TileSourceTemplate>();
@@ -383,7 +373,7 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 		});
 		
 		bld.setView(view);
-		bld.setPositiveButton(R.string.default_buttons_save, new DialogInterface.OnClickListener() {
+		bld.setPositiveButton(R.string.shared_string_save, new DialogInterface.OnClickListener() {
 			
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
@@ -409,7 +399,7 @@ public class OsmandRasterMapsPlugin extends OsmandPlugin {
 				}
 			}
 		});
-		bld.setNegativeButton(R.string.default_buttons_cancel, null);
+		bld.setNegativeButton(R.string.shared_string_cancel, null);
 		bld.show();
 	}
 

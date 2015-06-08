@@ -1,11 +1,8 @@
 package net.osmand.plus.osmedit;
 
-import java.util.Map;
-
 import net.osmand.PlatformUtil;
 import net.osmand.data.Amenity;
-import net.osmand.data.AmenityType;
-import net.osmand.osm.MapRenderingTypes;
+import net.osmand.osm.PoiType;
 import net.osmand.osm.edit.EntityInfo;
 import net.osmand.osm.edit.Node;
 import net.osmand.osm.edit.OSMSettings.OSMTagKey;
@@ -18,13 +15,14 @@ import android.content.Context;
 public class OpenstreetmapLocalUtil implements OpenstreetmapUtil {
 	
 	private final Context ctx;
-	private final OpenstreetmapsDbHelper db;
 
 	public final static Log log = PlatformUtil.getLog(OpenstreetmapLocalUtil.class);
 
-	public OpenstreetmapLocalUtil(Context uiContext) {
+	private OsmEditingPlugin plugin;
+
+	public OpenstreetmapLocalUtil(OsmEditingPlugin plugin, Context uiContext) {
+		this.plugin = plugin;
 		this.ctx = uiContext;
-		this.db = new OpenstreetmapsDbHelper(ctx);
 	}
 
 	@Override
@@ -36,23 +34,24 @@ public class OpenstreetmapLocalUtil implements OpenstreetmapUtil {
 	public Node commitNodeImpl(OsmPoint.Action action, Node n, EntityInfo info, String comment, boolean closeChangeSet){
 		Node newNode = n;
 		if (n.getId() == -1) {
-			newNode = new Node(n, Math.min(-2, db.getMinID() - 1)); // generate local id for the created node
+			newNode = new Node(n, Math.min(-2, plugin.getDBPOI().getMinID() - 1)); // generate local id for the created node
 		}
 		OpenstreetmapPoint p = new OpenstreetmapPoint();
 		p.setEntity(newNode);
 		p.setAction(action);
 		p.setComment(comment);
 		if (p.getAction() == OsmPoint.Action.DELETE && newNode.getId() < 0) { //if it is our local poi
-			db.deletePOI(p);
+			plugin.getDBPOI().deletePOI(p);
 		} else {
-			db.addOpenstreetmap(p);
+			plugin.getDBPOI().addOpenstreetmap(p);
 		}
 		return newNode;
 	}
 	
 	@Override
 	public Node loadNode(Amenity n) {
-		if(n.getId() % 2 == 1){
+		PoiType st = n.getType().getPoiTypeByKeyName(n.getSubType());
+		if(n.getId() % 2 == 1 || st == null){
 			// that's way id
 			return null;
 		}
@@ -62,10 +61,10 @@ public class OpenstreetmapLocalUtil implements OpenstreetmapUtil {
 		Node entity = new Node(n.getLocation().getLatitude(),
 							   n.getLocation().getLongitude(),
 							   nodeId);
-		StringBuilder tag = new StringBuilder();
-		StringBuilder value = new StringBuilder();
-		MapRenderingTypes.getDefault().getAmenityTagValue(n.getType(), n.getSubType(), tag, value);
-		entity.putTag(tag.toString(), value.toString());
+		entity.putTag(st.getOsmTag(), st.getOsmValue());
+		if(st.getOsmTag2() != null) {
+			entity.putTag(st.getOsmTag2(), st.getOsmValue2());
+		}
 		entity.putTag(OSMTagKey.NAME.getValue(), n.getName());
 		entity.putTag(OSMTagKey.OPENING_HOURS.getValue(), n.getOpeningHours());
  

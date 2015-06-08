@@ -12,7 +12,6 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.net.URLEncoder;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
@@ -31,6 +30,7 @@ import java.util.TimeZone;
 import net.osmand.Location;
 import net.osmand.PlatformUtil;
 import net.osmand.data.LocationPoint;
+import net.osmand.data.PointDescription;
 import net.osmand.util.Algorithms;
 
 import org.apache.commons.logging.Log;
@@ -115,9 +115,10 @@ public class GPXUtilities {
 			return lon;
 		}
 
+		
 		@Override
-		public String getName(Context ctx) {
-			return name;
+		public PointDescription getPointDescription(Context ctx) {
+			return new PointDescription(PointDescription.POINT_TYPE_WPT, name);
 		}
 
 		public WptPt(double lat, double lon, long time, double ele, double speed, double hdop) {
@@ -204,19 +205,6 @@ public class GPXUtilities {
 		
 		public boolean isElevationSpecified() {
 			return maxElevation != -100;
-		}
-		
-		public int getTimeHours(long time) {
-			return (int) ((time / 1000) / 3600);
-		}
-		
-		
-		public int getTimeSeconds(long time) {
-			return (int) ((time / 1000) % 60);
-		}
-
-		public int getTimeMinutes(long time) {
-			return (int) (((time / 1000) / 60) % 60);
 		}
 		
 		public boolean isSpeedSpecified() {
@@ -494,6 +482,7 @@ public class GPXUtilities {
 		public String warning = null;
 		public String path = "";
 		public boolean showCurrentTrack;
+		public long modifiedTime = 0;
 
 		public boolean isCloudmadeRouteFile() {
 			return "cloudmade".equalsIgnoreCase(author);
@@ -516,29 +505,6 @@ public class GPXUtilities {
 			g.prepareInformation(fileTimestamp, splitSegments.toArray(new SplitSegment[splitSegments.size()]));
 			return g ;
 		}
-		
-		
-		public List<GPXTrackAnalysis> splitByDistance(int meters) {
-			return split(getDistanceMetric(), meters);
-		}
-		
-		public List<GPXTrackAnalysis> splitByTime(int seconds) {
-			return split(getTimeSplit(), seconds);
-		}
-
-
-		public List<GPXTrackAnalysis> split(SplitMetric metric, int metricLimit) {
-			List<SplitSegment> splitSegments = new ArrayList<GPXUtilities.SplitSegment>();
-			for(int i = 0; i< tracks.size() ; i++){
-				Track subtrack = tracks.get(i);
-				for (int j = 0; j < subtrack.segments.size(); j++) {
-					TrkSegment segment = subtrack.segments.get(j);
-					splitSegment(metric, metricLimit, splitSegments, segment);
-				}
-			}
-			return convert(splitSegments);
-		}
-
 
 		
 		public boolean hasRtePt() {
@@ -548,6 +514,10 @@ public class GPXUtilities {
 				}
 			}
 			return false;
+		}
+		
+		public boolean hasWptPt() {
+			return points.size() > 0;
 		}
 		
 		public boolean hasTrkpt() {
@@ -628,6 +598,7 @@ public class GPXUtilities {
 			}
 			return points.isEmpty() && routes.isEmpty();
 		}
+
 
 	}
 
@@ -758,7 +729,7 @@ public class GPXUtilities {
 		writeNotNullText(serializer, "desc", p.desc);
 		if(p.link != null) {
 			serializer.startTag(null, "link");
-			serializer.attribute(null, "link", p.link);
+			serializer.attribute(null, "href", p.link);
 			serializer.endTag(null, "link");
 		}
 		writeNotNullText(serializer, "type", p.category);

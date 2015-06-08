@@ -16,13 +16,14 @@ import net.osmand.binary.BinaryMapRouteReaderAdapter.RouteRegion;
 import net.osmand.binary.BinaryMapRouteReaderAdapter.RouteTypeRule;
 import net.osmand.binary.RouteDataObject;
 import net.osmand.data.Amenity;
+import net.osmand.data.PointDescription;
 import net.osmand.data.Amenity.AmenityRoutePoint;
 import net.osmand.data.LocationPoint;
-import net.osmand.osm.MapRenderingTypes;
+import net.osmand.osm.PoiType;
 import net.osmand.plus.OsmAndFormatter;
 import net.osmand.plus.OsmandApplication;
-import net.osmand.plus.R;
 import net.osmand.plus.OsmandSettings.MetricsConstants;
+import net.osmand.plus.R;
 import net.osmand.plus.TargetPointsHelper.TargetPoint;
 import net.osmand.plus.activities.IntermediatePointsDialog;
 import net.osmand.plus.base.FavoriteImageDrawable;
@@ -526,19 +527,7 @@ public class WaypointHelper {
 		PoiLegacyFilter pf = getPoiFilter();
 		if (pf != null) {
 			final List<Location> locs = route.getImmutableAllLocations();
-			List<Amenity> amenities = app.getResourceManager().searchAmenitiesOnThePath(locs, poiSearchDeviationRadius,
-					pf, new ResultMatcher<Amenity>() {
-
-						@Override
-						public boolean publish(Amenity object) {
-							return true;
-						}
-
-						@Override
-						public boolean isCancelled() {
-							return false;
-						}
-					});
+			List<Amenity> amenities = pf.searchAmenitiesOnThePath(locs, poiSearchDeviationRadius);
 			for (Amenity a : amenities) {
 				AmenityRoutePoint rp = a.getRoutePoint();
 				int i = locs.indexOf(rp.pointA);
@@ -603,7 +592,7 @@ public class WaypointHelper {
 
 	/// 
 	public PoiLegacyFilter getPoiFilter() {
-		return app.getPoiFilters().getFilterById(app.getSettings().getPoiFilterForMap());
+		return app.getPoiFilters().getFilterById(app.getSettings().SELECTED_POI_FILTER_FOR_MAP.get());
 	}
 	public boolean showPOI() {
 		return app.getSettings().SHOW_NEARBY_POI.get();
@@ -675,22 +664,23 @@ public class WaypointHelper {
 		public Drawable getDrawable(Context uiCtx, OsmandApplication app) {
 			if(type == POI) {
 				Amenity amenity = ((AmenityLocationPoint) point).a;
-				StringBuilder tag = new StringBuilder();
-				StringBuilder value = new StringBuilder();
-				MapRenderingTypes.getDefault().getAmenityTagValue(amenity.getType(), amenity.getSubType(),
-						tag, value);
-				if(RenderingIcons.containsBigIcon(tag + "_" + value)) {
-					return uiCtx.getResources().getDrawable(RenderingIcons.getBigIconResourceId(tag + "_" + value));
-				} else if(RenderingIcons.containsBigIcon(value.toString())) {
-					return uiCtx.getResources().getDrawable(RenderingIcons.getBigIconResourceId(value.toString()));
+				PoiType st = amenity.getType().getPoiTypeByKeyName(amenity.getSubType());
+				if (st != null) {
+					if (RenderingIcons.containsBigIcon(st.getIconKeyName())) {
+						return uiCtx.getResources().getDrawable(
+								RenderingIcons.getBigIconResourceId(st.getIconKeyName()));
+					} else if (RenderingIcons.containsBigIcon(st.getOsmTag() + "_" + st.getOsmValue())) {
+						return uiCtx.getResources().getDrawable(
+								RenderingIcons.getBigIconResourceId(st.getOsmTag() + "_" + st.getOsmValue()));
+					}
 				}
 				return null;
 			} else if(type == TARGETS) {
-				return uiCtx.getResources().getDrawable(
-						!((TargetPoint)point).intermediate? R.drawable.list_destination:
-					R.drawable.list_intermediate);
+				int i = !((TargetPoint)point).intermediate? R.drawable.list_destination :
+					R.drawable.list_intermediate;
+				return uiCtx.getResources().getDrawable(i);
 			} else if(type == FAVORITES || type == WAYPOINTS) {
-				return FavoriteImageDrawable.getOrCreate(uiCtx, point.getColor());
+				return FavoriteImageDrawable.getOrCreate(uiCtx, point.getColor(), 0);
 			} else if(type == ALARMS) {
 				//assign alarm list icons manually for now
 				if(((AlarmInfo) point).getType().toString() == "SPEED_CAMERA") {
@@ -710,7 +700,7 @@ public class WaypointHelper {
 						return uiCtx.getResources().getDrawable(R.drawable.list_warnings_traffic_calming);
 					}
 				} else if(((AlarmInfo) point).getType().toString() == "TOLL_BOOTH") {
-					return uiCtx.getResources().getDrawable(R.drawable.mx_barrier_toll_booth);
+					return uiCtx.getResources().getDrawable(R.drawable.mx_toll_booth);
 				} else if(((AlarmInfo) point).getType().toString() == "STOP") {
 					return uiCtx.getResources().getDrawable(R.drawable.list_stop);
 				} else if(((AlarmInfo) point).getType().toString() == "PEDESTRIAN") {
@@ -780,9 +770,11 @@ public class WaypointHelper {
 			return a.getLocation().getLongitude();
 		}
 
+		
 		@Override
-		public String getName(Context ctx) {
-			return OsmAndFormatter.getPoiSimpleFormat(a, ctx, app.getSettings().usingEnglishNames());
+		public PointDescription getPointDescription(Context ctx) {
+			return new PointDescription(PointDescription.POINT_TYPE_POI, 
+					OsmAndFormatter.getPoiStringWithoutType(a, app.getSettings().MAP_PREFERRED_LOCALE.get()));
 		}
 
 		@Override
