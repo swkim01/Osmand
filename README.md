@@ -61,6 +61,24 @@ Functionality
  * Add POIs and directly upload them to OSM (or later if offline)
  * Optional trip recording also in background mode (while device is in sleep mode)
 
+#### Some Advanced Features
+ * 3D Map Display with DEM(.hgt) files
+ * You can download DEM files through http://www.viewfinderpanoramas.org/Coverage%20map%20viewfinderpanoramas_org3.htm or http://dds.cr.usgs.gov/srtm/version2_1/SRTM3/ and then put DEM files to <OsmAnd install directory>/heights/ directory.
+
+#### East Asia Map Support
+ * To enable east asia maps, put custom_tile_sources.xml file to <OsmAnd install directory>/tiles/ directory and then you can install a map from map sources --> additional install menu.
+ * <Korea> Daum Map: Korea 2000/Central Belt (GRS80) Coordinate (EPSG:5181) with offset (-30000, -60000) and (+Lon, +Lat) tile indices
+ * <Korea> Naver Map: UTM-K (GRS80) Coordinate (EPSG:5179) with offset (+90112, +1192896) and (+Lon, +Lat) tile indices
+ * <Korea> ForestOn Map: Korea 2000/Central Belt (GRS80) Coordinate (EPSG:5181) with offset (+0, +0) and (+Lon, +Lat) tile indices
+ * <Korea> VWorld Map: WGS84 Coordinate (EPSG:900913) with base (-180, 90) and  (+Lon, -Lat) tile indices
+ * <China> GoogleMap China: GCJ-02 Coordinate with base (-180, 90) and (+Lon, -Lat) tile indices
+ * <China> Baidu Map: GCJ-02 -> BD-09 Coordinate with base (0, 0) and (+Lon, +Lat) tile indices
+ * <China> Sogou Map: BD-09 Coordinate -> 256/250 Scale Transform with base (0, 0) and (+Lon, +Lat) tile indices
+ * <China> Sina Map: GCJ-02 Coordinate with base (-180, 90) and (+Lon, -Lat) tile indices
+ * <China> ABC Map: GCJ-02 Coordinate with base (-180, 90) and (+Lon, -Lat) tile indices
+ * <Japan> YahooMap Japan: WGS84 Coordinate (EPSG:900913) with base (0, 0) and (+, +) tile indices
+ * <Japan> Navitime Map: WGS84 Coordinate (EPSG:900913) with base (-180, 90) and (+Lon, -Lat) tile indices 
+
 <p>OsmAnd is open source and actively being developed. Everyone can contribute to the application by reporting bugs, improving translations, or coding new features. The project is in a lively state of continuous improvement by all these forms of developer and user interaction. The project progress also relies on financial contributions to fund the development, coding, and testing of new functionalities. By buying OsmAnd+ you help the application to be even more awesome! It is also possible to fund specific new features, or to make a general donation on http://osmand.net. </p>
 
 
