@@ -76,7 +76,7 @@ Functionality
  * [China] Sogou Map: BD-09 Coordinate -> 256/250 Scale Transform with base (0, 0) and (+Lon, +Lat) tile indices
  * [China] Sina Map: GCJ-02 Coordinate with base (-180, 90) and (+Lon, -Lat) tile indices
  * [China] ABC Map: GCJ-02 Coordinate with base (-180, 90) and (+Lon, -Lat) tile indices
- * [Japan] YahooMap Japan: WGS84 Coordinate (EPSG:900913) with base (0, 0) and (+, +) tile indices
+ * [Japan] YahooMap Japan: WGS84 Coordinate (EPSG:900913) with base (0, 0) and (+Lon, +Lat) tile indices
  * [Japan] Navitime Map: WGS84 Coordinate (EPSG:900913) with base (-180, 90) and (+Lon, -Lat) tile indices 
 
 <p>OsmAnd is open source and actively being developed. Everyone can contribute to the application by reporting bugs, improving translations, or coding new features. The project is in a lively state of continuous improvement by all these forms of developer and user interaction. The project progress also relies on financial contributions to fund the development, coding, and testing of new functionalities. By buying OsmAnd+ you help the application to be even more awesome! It is also possible to fund specific new features, or to make a general donation on http://osmand.net. </p>
