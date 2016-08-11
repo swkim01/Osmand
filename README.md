@@ -64,6 +64,7 @@ Functionality
 #### Some Advanced Features
  * 3D Map Display with DEM(.hgt) files
  * You can download DEM files through http://www.viewfinderpanoramas.org/Coverage%20map%20viewfinderpanoramas_org3.htm or http://dds.cr.usgs.gov/srtm/version2_1/SRTM3/ and then put DEM files to [OsmAnd install directory]/heights/ directory.
+ * 3D Map menu is within the context menu, which is appeared on long-clicking-and-clicking on the map.
 
 #### East Asia Map Support
  * To enable east asia maps, put custom_tile_sources.xml file to [OsmAnd install directory]/tiles/ directory and then you can install a map from map sources --> additional install menu.
