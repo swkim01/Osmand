@@ -77,6 +77,7 @@ Functionality
  * [China] Sogou Map: BD-09 Coordinate -> 256/250 Scale Transform with base (0, 0) and (+Lon, +Lat) tile indices
  * [China] Sina Map: GCJ-02 Coordinate with base (-180, 90) and (+Lon, -Lat) tile indices
  * [China] ABC Map: GCJ-02 Coordinate with base (-180, 90) and (+Lon, -Lat) tile indices
+ * [Japan] JapanVectorMaps: WGS84 Coordinate (EPSG:900913) with base (0, 0) and (+Lon, +Lat) tile indices
  * [Japan] YahooMap Japan: WGS84 Coordinate (EPSG:900913) with base (0, 0) and (+Lon, +Lat) tile indices
  * [Japan] Navitime Map: WGS84 Coordinate (EPSG:900913) with base (-180, 90) and (+Lon, -Lat) tile indices 
 
