@@ -8,7 +8,7 @@ package net.osmand.util;
  *  Original from http://blog.csdn.net/coolypf/article/details/8569813
  *
  */
-public class Bd02MapUtils extends Gcj09MapUtils {
+public class Bd09MapUtils extends Gcj02MapUtils {
 	
 	static final double x_pi = Math.PI /*3.14159265358979324*/ * 3000.0 / 180.0; 
 	

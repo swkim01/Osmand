@@ -22,10 +22,10 @@ import java.util.Map;
 import net.osmand.PlatformUtil;
 import net.osmand.osm.io.NetworkUtils;
 import net.osmand.util.Algorithms;
-import net.osmand.util.Bd02MapUtils;
+import net.osmand.util.Bd09MapUtils;
 import net.osmand.util.DaumMapUtils;
 import net.osmand.util.ForestOnMapUtils;
-import net.osmand.util.Gcj09MapUtils;
+import net.osmand.util.Gcj02MapUtils;
 import net.osmand.util.MapUtils;
 import net.osmand.util.NaverMapUtils;
 import net.osmand.util.SogouMapUtils;
@@ -48,11 +48,11 @@ public class TileSourceManager {
 	private static final String RULE_DAUM = "daum";
 	private static final String RULE_NAVER = "naver";
 	private static final String RULE_FORESTON = "foreston";
-	private static final String RULE_GCJ09 = "gcj09";
+	private static final String RULE_GCJ02 = "gcj09";
 	private static final String RULE_BAIDU = "baidu";
 	private static final String RULE_SOGOU = "sogou";
 
-	public static MapUtils[] mapUtilsList = {new MapUtils(), new YahooMapUtils(), new DaumMapUtils(), new NaverMapUtils(), new ForestOnMapUtils(), new Gcj09MapUtils(), new Bd02MapUtils(), new SogouMapUtils()};
+	public static MapUtils[] mapUtilsList = {new MapUtils(), new YahooMapUtils(), new DaumMapUtils(), new NaverMapUtils(), new ForestOnMapUtils(), new Gcj02MapUtils(), new Bd09MapUtils(), new SogouMapUtils()};
 
 	public static class TileSourceTemplate implements ITileSource, Cloneable {
 		private int maxZoom;
@@ -510,8 +510,8 @@ return createTileSourceTemplates(new FileInputStream(customTiles));
 			template = createForestOnTileSourceTemplate(attrs, true);
 		} else if (RULE_YAHOO.equalsIgnoreCase(rule)) {
 			template = createYahooTileSourceTemplate(attrs, true);
-		} else if (RULE_GCJ09.equalsIgnoreCase(rule)) {
-			template = createGcj09TileSourceTemplate(attrs, true);
+		} else if (RULE_GCJ02.equalsIgnoreCase(rule)) {
+			template = createGcj02TileSourceTemplate(attrs, true);
 		} else if (RULE_BAIDU.equalsIgnoreCase(rule)) {
 			template = createBaiduTileSourceTemplate(attrs, true);
 		} else if (RULE_SOGOU.equalsIgnoreCase(rule)) {
@@ -822,7 +822,7 @@ return createTileSourceTemplates(new FileInputStream(customTiles));
 		}
 	}
 	
-	private static TileSourceTemplate createGcj09TileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
+	private static TileSourceTemplate createGcj02TileSourceTemplate(Map<String, String> attributes, boolean ignoreTemplate) {
 		String name = attributes.get("name");
 		String urlTemplate = attributes.get("url_template");
 		if (name == null || (urlTemplate == null && !ignoreTemplate)) {
@@ -837,14 +837,14 @@ return createTileSourceTemplates(new FileInputStream(customTiles));
 		String ext = attributes.get("ext") == null ? ".jpg" : attributes.get("ext");
 		int bitDensity = parseInt(attributes, "img_density", 16);
 		int avgTileSize = parseInt(attributes, "avg_img_size", 18000);
-		TileSourceTemplate templ = new Gcj09TileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
+		TileSourceTemplate templ = new Gcj02TileSourceTemplate(name, urlTemplate, ext, maxZoom, minZoom, tileSize, bitDensity, avgTileSize);
 		templ.setMapUtil(5);
 		return templ;
 	}
 
-	public static class Gcj09TileSourceTemplate extends TileSourceTemplate {
+	public static class Gcj02TileSourceTemplate extends TileSourceTemplate {
 		
-		public Gcj09TileSourceTemplate(String name, String urlToLoad, String ext,
+		public Gcj02TileSourceTemplate(String name, String urlToLoad, String ext,
 				int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
 			super(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize);
 		}

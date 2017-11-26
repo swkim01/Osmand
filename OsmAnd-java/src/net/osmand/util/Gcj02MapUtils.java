@@ -11,7 +11,7 @@ package net.osmand.util;
  *  Original from https://github.com/googollee/eviltransform
  *
  */
-public class Gcj09MapUtils extends MapUtils {
+public class Gcj02MapUtils extends MapUtils {
 	
 	//
     // Krasovsky 1940
