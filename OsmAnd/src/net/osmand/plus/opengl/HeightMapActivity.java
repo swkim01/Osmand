@@ -58,7 +58,7 @@ public class HeightMapActivity extends Activity {
 		final int maxTextureSize = Integer.parseInt(prefs.getString("maxTextureSize", "512"));
 		final String textureFilter = prefs.getString("textureFiltering", "nearest");
 		final int complexity = Integer.parseInt(prefs.getString("complexity", "17"));
-		final float scale = Float.parseFloat(prefs.getString("height_scale", "0.08f"));//"0.0625f"));
+		final float scale = Float.parseFloat(prefs.getString("height_scale", "0.0625f"));// 1/16 "0.08f"));
 		
 		/*
 		final File dir = new File(ResourceManager.HEIGHTS_PATH);
