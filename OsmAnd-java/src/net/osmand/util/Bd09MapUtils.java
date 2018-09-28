@@ -172,7 +172,7 @@ public class Bd09MapUtils extends Gcj02MapUtils {
 		//double lat = 34.78545;
 		double lon = 40.0;
 		double lat = 37.5;
-		Bd02MapUtils mapUtils = new Bd02MapUtils();
+		Bd09MapUtils mapUtils = new Bd09MapUtils();
 		GeoPoint js_pt = mapUtils.lonLatToPoint(lon, lat);
 		System.out.println("px="+js_pt.getX()+", py="+js_pt.getY());
 		System.out.println("tx="+(js_pt.getX()/(1<<(25-(int)zoom)))+", ty="+(js_pt.getY()/(1<<(25-(int)zoom))));
