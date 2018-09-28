@@ -8,7 +8,7 @@ package net.osmand.util;
  *  Original from http://blog.csdn.net/coolypf/article/details/8569813
  *
  */
-public class SogouMapUtils extends Bd02MapUtils {
+public class SogouMapUtils extends Bd09MapUtils {
 
 	/* (non-Javadoc)
 	 * @see net.osmand.osm.MapUtils#getTileNumberX(float, double, double)
