@@ -48,7 +48,7 @@ public class TileSourceManager {
 	private static final String RULE_DAUM = "daum";
 	private static final String RULE_NAVER = "naver";
 	private static final String RULE_FORESTON = "foreston";
-	private static final String RULE_GCJ02 = "gcj09";
+	private static final String RULE_GCJ02 = "gcj02";
 	private static final String RULE_BAIDU = "baidu";
 	private static final String RULE_SOGOU = "sogou";
 
