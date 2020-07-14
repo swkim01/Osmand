@@ -1293,14 +1293,14 @@ public class RouteProvider {
 		//MODE=SHORTEST_REALTIME,SHORTEST_TIME,SHORTEST_DIST
 		//OPTION=NONE,BIKE,FREEWAY
 		if (ApplicationMode.PEDESTRIAN == params.mode) {
-			uri.append("http://map.daum.net/route/walkset.json?walkMode=RECOMMENDATION"); //$NON-NLS-1$
+			uri.append("http://map.daum.net/route/walk.json?walkMode=RECOMMENDATION"); //$NON-NLS-1$
 			uri.append("&walkOption=NONE"); //$NON-NLS-1$
 		}
 		//else if (ApplicationMode.BICYCLE == params.mode) {
 		//	uri.append("&routeOption=BIKE") ; //$NON-NLS-1$
 		//}
 		else {
-			uri.append("http://map.daum.net/route/carset.json?carMode=SHORTEST_REALTIME"); //$NON-NLS-1$
+			uri.append("http://map.daum.net/route/car.json?carMode=SHORTEST_REALTIME"); //$NON-NLS-1$
 			uri.append("&carOption=NONE"); //$NON-NLS-1$
 		}
 		

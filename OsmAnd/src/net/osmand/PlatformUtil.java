@@ -110,29 +110,29 @@ public class PlatformUtil {
 			return android.util.Log.isLoggable(TAG, android.util.Log.INFO);
 		}
 
-		@Override
-		public boolean isTraceEnabled() {
-			return android.util.Log.isLoggable(TAG, android.util.Log.DEBUG);
-		}
+		//@Override
+		//public boolean isTraceEnabled() {
+		//	return android.util.Log.isLoggable(TAG, android.util.Log.DEBUG);
+		//}
 
 		@Override
 		public boolean isWarnEnabled() {
 			return android.util.Log.isLoggable(TAG, android.util.Log.WARN);
 		}
 
-		@Override
-		public void trace(Object message) {
-			if(isTraceEnabled()){
-				android.util.Log.d(TAG, name + " " + message); //$NON-NLS-1$
-			}
-		}
+		//@Override
+		//public void trace(Object message) {
+		//	if(isTraceEnabled()){
+		//		android.util.Log.d(TAG, name + " " + message); //$NON-NLS-1$
+		//	}
+		//}
 
-		@Override
-		public void trace(Object message, Throwable t) {
-			if(isTraceEnabled()){
-				android.util.Log.d(TAG, name + " " + message, t); //$NON-NLS-1$
-			}	
-		}
+		//@Override
+		//public void trace(Object message, Throwable t) {
+		//	if(isTraceEnabled()){
+		//		android.util.Log.d(TAG, name + " " + message, t); //$NON-NLS-1$
+		//	}	
+		//}
 
 		@Override
 		public void warn(Object message) {

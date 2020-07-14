@@ -2,7 +2,7 @@ package net.osmand.plus;
 
 import net.osmand.PlatformUtil;
 import net.osmand.access.AccessibleToast;
-import net.osmand.plus.osmo.OsMoPlugin;
+//import net.osmand.plus.osmo.OsMoPlugin;
 import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -169,13 +169,13 @@ public class NavigationService extends Service implements LocationListener {
 				if(settings.SAVE_GLOBAL_TRACK_TO_GPX.get()) {
 					settings.SAVE_GLOBAL_TRACK_TO_GPX.set(false);
 				}
-				OsMoPlugin plugin = OsmandPlugin.getEnabledPlugin(OsMoPlugin.class);
-				if(plugin != null) {
-					if(plugin.getTracker().isEnabledTracker()) {
-						plugin.getTracker().disableTracker();
-					}
-					plugin.getService().disconnect();
- 				}
+				//OsMoPlugin plugin = OsmandPlugin.getEnabledPlugin(OsMoPlugin.class);
+				//if(plugin != null) {
+				//	if(plugin.getTracker().isEnabledTracker()) {
+				//		plugin.getTracker().disableTracker();
+				//	}
+				//	plugin.getService().disconnect();
+ 				//}
 				NavigationService.this.stopSelf();
 			}
 
@@ -197,8 +197,8 @@ public class NavigationService extends Service implements LocationListener {
 			nt = nt + Integer.toString(soi/1000/60) + " " + getString(R.string.int_min);
 		}
 
-		notification.setLatestEventInfo(this, Version.getAppName(cl) + " " + getString(R.string.osmand_service), nt,
-				PendingIntent.getBroadcast(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+		//notification.setLatestEventInfo(this, Version.getAppName(cl) + " " + getString(R.string.osmand_service), nt,
+		//		PendingIntent.getBroadcast(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT));
 
 		startForeground(NOTIFICATION_SERVICE_ID, notification);
 	}

@@ -10,7 +10,6 @@ import android.opengl.GLSurfaceView;
 import android.os.Handler;
 import android.os.Message;
 import android.util.DisplayMetrics;
-import android.util.FloatMath;
 import android.view.MotionEvent;
 import android.view.WindowManager;
 
@@ -215,8 +214,8 @@ public class MapGLSurfaceView extends GLSurfaceView {
 				if (mPressed == 1) {
 					float xDelta = event.getX() - mLastScreenX;
 					float yDelta = event.getY() - mLastScreenY;
-					float cosD = FloatMath.cos(mCameraDirection);
-					float sinD = FloatMath.sin(mCameraDirection);
+					float cosD = (float)Math.cos(mCameraDirection);
+					float sinD = (float)Math.sin(mCameraDirection);
 					float xMove = xDelta * cosD - yDelta * sinD;
 					float yMove = xDelta * sinD + yDelta * cosD;
 					move(-xMove, -yMove);
@@ -286,7 +285,7 @@ public class MapGLSurfaceView extends GLSurfaceView {
 	private float getDistance(MotionEvent event) {
 		float diffX = event.getX(0) - event.getX(1);
 		float diffY = event.getY(0) - event.getY(1);
-		return FloatMath.sqrt(diffX * diffX + diffY * diffY);
+		return (float)Math.sqrt(diffX * diffX + diffY * diffY);
 	}
 	
 	private float getAngle(MotionEvent event) {
@@ -331,9 +330,9 @@ public class MapGLSurfaceView extends GLSurfaceView {
 	
 	
 	synchronized private void updateCamera() {
-		float cosZY = FloatMath.cos(mCameraZYAngle);
-		float sinZY = FloatMath.sin(mCameraZYAngle);
-		mWorkVector.set(FloatMath.cos(mCameraXZAngle)*cosZY, sinZY, FloatMath.sin(mCameraXZAngle)*cosZY);
+		float cosZY = (float)Math.cos(mCameraZYAngle);
+		float sinZY = (float)Math.sin(mCameraZYAngle);
+		mWorkVector.set((float)Math.cos(mCameraXZAngle)*cosZY, sinZY, (float)Math.sin(mCameraXZAngle)*cosZY);
 		mCameraLookAtDistance = Math.abs(mViewerHeight/sinZY);
 		mWorkVector.multiply(mCameraLookAtDistance);
 		mWorkVector.add(mCameraPosition);
@@ -391,8 +390,8 @@ public class MapGLSurfaceView extends GLSurfaceView {
 				mCameraXZAngle -= TWO_PI;
 			else if (mCameraXZAngle < 0.0f)
 				mCameraXZAngle += TWO_PI;
-			float cosZYAngle = FloatMath.cos(mCameraZYAngle);
-			mWorkVector.set(-FloatMath.cos(mCameraXZAngle)*cosZYAngle, -FloatMath.sin(mCameraZYAngle), -FloatMath.sin(mCameraXZAngle)*cosZYAngle);
+			float cosZYAngle = (float)Math.cos(mCameraZYAngle);
+			mWorkVector.set(-(float)Math.cos(mCameraXZAngle)*cosZYAngle, -(float)Math.sin(mCameraZYAngle), -(float)Math.sin(mCameraXZAngle)*cosZYAngle);
 			mWorkVector.multiply(mCameraLookAtDistance);
 			mWorkVector.add(mTargetPosition);
 			mCameraPosition.set(mWorkVector);
@@ -431,9 +430,9 @@ public class MapGLSurfaceView extends GLSurfaceView {
 		mViewerHeight = Math.max(getSourceTileSize(), mTileMap.getHeight((float)longitude, (float)latitude)+64);
 		//mViewerHeight = 8.0f * (1 << (20 - (int)zoom));
 		mCameraPosition.y = 0.f;
-		float cosZY = FloatMath.cos(mCameraZYAngle);
-		float sinZY = FloatMath.sin(mCameraZYAngle);
-		mWorkVector.set(FloatMath.cos(mCameraXZAngle)*cosZY, sinZY, FloatMath.sin(mCameraXZAngle)*cosZY);
+		float cosZY = (float)Math.cos(mCameraZYAngle);
+		float sinZY = (float)Math.sin(mCameraZYAngle);
+		mWorkVector.set((float)Math.cos(mCameraXZAngle)*cosZY, sinZY, (float)Math.sin(mCameraXZAngle)*cosZY);
 		mCameraLookAtDistance = Math.abs(mViewerHeight/sinZY);
 		mWorkVector.multiply(mCameraLookAtDistance);
 		mTargetPosition.set(mCameraPosition);

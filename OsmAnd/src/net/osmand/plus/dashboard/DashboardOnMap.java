@@ -27,7 +27,7 @@ import net.osmand.plus.helpers.WaypointDialogHelper;
 import net.osmand.plus.helpers.WaypointHelper.LocationPointWrapper;
 import net.osmand.plus.monitoring.DashTrackFragment;
 import net.osmand.plus.osmedit.DashOsmEditsFragment;
-import net.osmand.plus.osmo.DashOsMoFragment;
+//import net.osmand.plus.osmo.DashOsMoFragment;
 import net.osmand.plus.parkingpoint.DashParkingFragment;
 import net.osmand.plus.routing.RoutingHelper;
 import net.osmand.plus.views.DownloadedRegionsLayer;
@@ -658,7 +658,7 @@ public class DashboardOnMap implements ObservableScrollViewCallbacks {
 		showFragment(manager, fragmentTransaction, DashFavoritesFragment.TAG, DashFavoritesFragment.class, showCards);
 		showFragment(manager, fragmentTransaction, DashAudioVideoNotesFragment.TAG, DashAudioVideoNotesFragment.class, showCards);
 		showFragment(manager, fragmentTransaction, DashTrackFragment.TAG, DashTrackFragment.class, showCards);
-		showFragment(manager, fragmentTransaction, DashOsMoFragment.TAG, DashOsMoFragment.class, showCards);
+//		showFragment(manager, fragmentTransaction, DashOsMoFragment.TAG, DashOsMoFragment.class, showCards);
 		showFragment(manager, fragmentTransaction, DashOsmEditsFragment.TAG, DashOsmEditsFragment.class, showCards);
 //		showFragment(manager, fragmentTransaction, DashUpdatesFragment.TAG, DashUpdatesFragment.class, showCards);
 		showFragment(manager, fragmentTransaction, DashPluginsFragment.TAG, DashPluginsFragment.class, showCards);

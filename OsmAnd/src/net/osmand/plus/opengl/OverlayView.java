@@ -10,7 +10,6 @@ import android.graphics.Paint.Style;
 import android.graphics.PorterDuff.Mode;
 import android.graphics.Rect;
 import android.util.DisplayMetrics;
-import android.util.FloatMath;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
@@ -111,10 +110,10 @@ public class OverlayView extends SurfaceView implements Callback {
 		float posX = (float)defaultMapUtils.getTileNumberX(zoom, longitude, latitude)*tileSize;
 		float posZ = (float)defaultMapUtils.getTileNumberY(zoom, longitude, latitude)*tileSize;
 		float posY = mHeightSource.getHeight(longitude, latitude) * mapGLSurfaceView.getHeightScale() * tileSize / 2 / (1 << (20 - (int)zoom));
-		float cosZY = FloatMath.cos(mCameraZYAngle);
-		float sinZY = FloatMath.sin(mCameraZYAngle);
-		float cosXZ = FloatMath.cos(mCameraXZAngle-(float)Math.PI/2);
-		float sinXZ = FloatMath.sin(mCameraXZAngle-(float)Math.PI/2);
+		float cosZY = (float)Math.cos(mCameraZYAngle);
+		float sinZY = (float)Math.sin(mCameraZYAngle);
+		float cosXZ = (float)Math.cos(mCameraXZAngle-(float)Math.PI/2);
+		float sinXZ = (float)Math.sin(mCameraXZAngle-(float)Math.PI/2);
 		
 		float px = posX - mCameraPosition.x;
 		float py = posY - mCameraPosition.y;

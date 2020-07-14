@@ -19,7 +19,7 @@ import net.osmand.plus.distancecalculator.DistanceCalculatorPlugin;
 import net.osmand.plus.monitoring.OsmandMonitoringPlugin;
 import net.osmand.plus.openseamapsplugin.NauticalMapsPlugin;
 import net.osmand.plus.osmedit.OsmEditingPlugin;
-import net.osmand.plus.osmo.OsMoPlugin;
+//import net.osmand.plus.osmo.OsMoPlugin;
 import net.osmand.plus.parkingpoint.ParkingPositionPlugin;
 import net.osmand.plus.rastermaps.OsmandRasterMapsPlugin;
 import net.osmand.plus.skimapsplugin.SkiMapsPlugin;
@@ -96,7 +96,7 @@ public abstract class OsmandPlugin {
 		Set<String> enabledPlugins = settings.getEnabledPlugins();
 		allPlugins.add(new OsmandRasterMapsPlugin(app));
 		allPlugins.add(new OsmandMonitoringPlugin(app));
-		allPlugins.add(new OsMoPlugin(app));
+		//allPlugins.add(new OsMoPlugin(app));
 		checkMarketPlugin(app, new SRTMPlugin(app), true, SRTM_PLUGIN_COMPONENT_PAID, SRTM_PLUGIN_COMPONENT);
 
 		// ? questionable - definitely not market plugin 

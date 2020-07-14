@@ -37,7 +37,7 @@ public class SearchAddressFragment extends Fragment {
 
 	public static final String SELECT_ADDRESS_POINT_INTENT_KEY = "SELECT_ADDRESS_POINT_INTENT_KEY";
 	public static final int SELECT_ADDRESS_POINT_RESULT_OK = 1;	
-	private static final boolean ENABLE_ONLINE_ADDRESS = false; // disabled moved to poi search
+	private static final boolean ENABLE_ONLINE_ADDRESS = true; // disabled moved to poi search
 	public static final String SELECT_ADDRESS_POINT_LAT = "SELECT_ADDRESS_POINT_LAT";
 	public static final String SELECT_ADDRESS_POINT_LON = "SELECT_ADDRESS_POINT_LON";
 	private static final int NAVIGATE_TO = 0;

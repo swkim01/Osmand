@@ -3,11 +3,16 @@ package net.osmand.plus.monitoring;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSession;
 
 import net.osmand.PlatformUtil;
 import net.osmand.plus.OsmAndLocationProvider;
@@ -17,15 +22,15 @@ import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.R;
 
 import org.apache.commons.logging.Log;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.conn.ssl.AllowAllHostnameVerifier;
-import org.apache.http.conn.ssl.SSLSocketFactory;
+//import org.apache.http.HttpResponse;
+//import org.apache.http.client.methods.HttpGet;
+//import org.apache.http.client.methods.HttpRequestBase;
+//import org.apache.http.impl.client.DefaultHttpClient;
+//import org.apache.http.params.BasicHttpParams;
+//import org.apache.http.params.HttpConnectionParams;
+//import org.apache.http.params.HttpParams;
+//import org.apache.http.conn.ssl.AllowAllHostnameVerifier;
+//import org.apache.http.conn.ssl.SSLSocketFactory;
 
 import android.content.Context;
 import android.os.AsyncTask;
@@ -137,32 +142,53 @@ public class LiveMonitoringHelper  {
 		String url = MessageFormat.format(st, prm.toArray());
 		try {
 
-			HttpParams params = new BasicHttpParams();
-			HttpConnectionParams.setConnectionTimeout(params, 15000);
-			DefaultHttpClient httpclient = new DefaultHttpClient(params);
+			//HttpParams params = new BasicHttpParams();
+			//HttpConnectionParams.setConnectionTimeout(params, 15000);
+			//DefaultHttpClient httpclient = new DefaultHttpClient(params);
 			//allow certificates where hostnames doesn't match CN
-			SSLSocketFactory sf = (SSLSocketFactory) httpclient.getConnectionManager().getSchemeRegistry().getScheme("https").getSocketFactory();
-			sf.setHostnameVerifier(new AllowAllHostnameVerifier());
+			//SSLSocketFactory sf = (SSLSocketFactory) httpclient.getConnectionManager().getSchemeRegistry().getScheme("https").getSocketFactory();
+			//sf.setHostnameVerifier(new AllowAllHostnameVerifier());
 			// Parse the URL and let the URI constructor handle proper encoding of special characters such as spaces
 			URL u = new URL(url);
-			URI uri = new URI(u.getProtocol(), u.getUserInfo(), u.getHost(), u.getPort(), u.getPath(), u.getQuery(), u.getRef());
-			HttpRequestBase method = new HttpGet(uri);
+			HttpURLConnection urlConnection = (HttpURLConnection) u.openConnection();
+                        URI uri = new URI(u.getProtocol(), u.getUserInfo(), u.getHost(), u.getPort(),
+                                                u.getPath(), u.getQuery(), u.getRef());
+
+                        urlConnection.setConnectTimeout(15000);
+                        urlConnection.setReadTimeout(15000);
+
+			// allow certificates where hostnames doesn't match CN
+                        if (u.getProtocol().equals("https")) {
+                                ((HttpsURLConnection) urlConnection).setHostnameVerifier(
+                                                new HostnameVerifier() {
+                                                        public boolean verify(String host, SSLSession session) {
+                                                                return (true);
+                                                        }
+                                                });
+                        }
+
+			//URI uri = new URI(u.getProtocol(), u.getUserInfo(), u.getHost(), u.getPort(), u.getPath(), u.getQuery(), u.getRef());
+			//HttpRequestBase method = new HttpGet(uri);
 			log.info("Monitor " + uri);
-			HttpResponse response = httpclient.execute(method);
+			//HttpResponse response = httpclient.execute(method);
 			
-			if(response.getStatusLine() == null || 
-				response.getStatusLine().getStatusCode() != 200){
-				
-				String msg;
-				if(response.getStatusLine() == null){
-					msg = ctx.getString(R.string.failed_op); //$NON-NLS-1$
-				} else {
-					msg = response.getStatusLine().getStatusCode() + " : " + //$NON-NLS-1$//$NON-NLS-2$
-							response.getStatusLine().getReasonPhrase();
-				}
+			if (urlConnection.getResponseCode()/100 != 2) {
+				String msg = urlConnection.getResponseCode() + " : " + //$NON-NLS-1$//$NON-NLS-2$
+						urlConnection.getResponseMessage();
+
+			//if(response.getStatusLine() == null || 
+			//	response.getStatusLine().getStatusCode() != 200){
+			//	String msg;
+			//	if(response.getStatusLine() == null){
+			//		msg = ctx.getString(R.string.failed_op); //$NON-NLS-1$
+			//	} else {
+			//		msg = response.getStatusLine().getStatusCode() + " : " + //$NON-NLS-1$//$NON-NLS-2$
+			//				response.getStatusLine().getReasonPhrase();
+			//	}
 				log.error("Error sending monitor request: " +  msg);
 			} else {
-				InputStream is = response.getEntity().getContent();
+				//InputStream is = response.getEntity().getContent();
+				InputStream is = urlConnection.getInputStream();
 				StringBuilder responseBody = new StringBuilder();
 				if (is != null) {
 					BufferedReader in = new BufferedReader(new InputStreamReader(is, "UTF-8")); //$NON-NLS-1$
@@ -173,12 +199,14 @@ public class LiveMonitoringHelper  {
 					}
 					is.close();
 				}
-				httpclient.getConnectionManager().shutdown();
-				log.info("Monitor response (" + response.getFirstHeader("Content-Type") + "): " + responseBody.toString());
+				//httpclient.getConnectionManager().shutdown();
+				//log.info("Monitor response (" + response.getFirstHeader("Content-Type") + "): " + responseBody.toString());
+				log.info("Monitor response (" + urlConnection.getHeaderField("Content-Type") + "): " + responseBody.toString());
 			}
-
+			urlConnection.disconnect();
 			
 		} catch (Exception e) {
+			//log.error("Failed connect to " + url + ": " + e.getMessage(), e);
 			log.error("Failed connect to " + url + ": " + e.getMessage(), e);
 		}
 	}

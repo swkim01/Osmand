@@ -163,8 +163,8 @@ public class SearchActivity extends TabActivity implements OsmAndLocationListene
 		if(tab == POI_TAB_INDEX) {
 			return SearchPoiFilterFragment.class;
 		} else if(tab == ADDRESS_TAB_INDEX) {
-//			return searchOnLine ? SearchAddressOnlineFragment.class : SearchAddressFragment.class;
-			return SearchAddressFragment.class;
+			return searchOnLine ? SearchAddressOnlineFragment.class : SearchAddressFragment.class;
+//			return SearchAddressFragment.class;
 		} else if(tab == LOCATION_TAB_INDEX) {
 			return NavigatePointFragment.class;
 		} else if(tab == HISTORY_TAB_INDEX) {

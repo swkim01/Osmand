@@ -21,7 +21,7 @@ import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandSettings;
 import net.osmand.plus.R;
 import net.osmand.plus.activities.MapActivity;
-import net.osmand.plus.osmo.OsMoService;
+//import net.osmand.plus.osmo.OsMoService;
 import net.osmand.plus.poi.PoiFiltersHelper;
 import net.osmand.plus.poi.PoiLegacyFilter;
 import net.osmand.plus.render.RenderingIcons;
