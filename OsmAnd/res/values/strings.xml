@@ -9,6 +9,20 @@
          3. All your modified/created strings are in the top of the file (to make easier find what\'s translated).
     PLEASE: Have a look at http://code.google.com/p/osmand/wiki/UIConsistency, it may really improve your and our work  :-)  Thx - Hardy
     -->
+    <string name="devicescan_activity">BLE Scan</string>
+    <string name="ble_not_supported">BLE is not supported</string>
+    <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
+    <string name="unknown_device">Unknown device</string>
+    <string name="scan_ble_btn">Scan</string>
+    <string name="stop_ble_btn">Stop</string>
+    <string name="osmand_rf_object_name">RF Object</string>
+    <string name="osmand_rf_show_info">Show RF Info</string>
+    <string name="context_menu_item_show_rf_object">Show RF Objects</string>
+    <string name="rf_plugin_name">RF Object</string>
+    <string name="rf_plugin_description">This Plugin provides the functionality for detecting nearby RF/LoRa objects with BLE connection
+		\n\nYou can track other devices and be tracked.</string>
+    <string name="map_widget_rf">RF object</string>
+
     <string name="context_menu_item_invoke_3dmap">Invoke 3D Map</string>
     <string name="context_menu_item_invoke_navigator">Invoke Navigator</string>
     <string name="navigator_choose_title">Choose Navigator</string>

@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="devicescan_activity">BLE 스캔</string>
+    <string name="ble_not_supported">BLE 가 지원되지 않습니다</string>
+    <string name="error_bluetooth_not_supported">블루투스가 지원되지 않습니다.</string>
+    <string name="unknown_device">모르는 장치</string>
+    <string name="scan_ble_btn">스캔</string>
+    <string name="stop_ble_btn">정지</string>
+    <string name="osmand_rf_object_name">RF 물체</string>
+    <string name="osmand_rf_show_info">RF 정보 보기</string>
+    <string name="context_menu_item_show_rf_point">RF 물체 보기</string>
+    <string name="rf_plugin_name">RF 물체</string>
+    <string name="rf_plugin_description">이 플러그인은 BLE를 연결하여 RF/LoRa 물체를 감지하는 기능을 제공합니다
+                \n\n따라서 이러한 물체를 추적할 수 있습니다.</string>
+
 	<string name="context_menu_item_invoke_3dmap">3D 맵 보기</string>
 	<string name="context_menu_item_invoke_navigator">내비게이터 호출</string>
 	<string name="navigator_choose_title">내비게이터 선택</string>
